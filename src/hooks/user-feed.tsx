@@ -270,7 +270,7 @@ export default function UserFeed() {
                       )}
                       {account.status.startsWith("in ") && (
                         <span className="text-xs">
-                          in{" "}
+                          in forum{" "}
                           <Link
                             href="#"
                             className="text-blue-500 hover:underline"
@@ -470,22 +470,8 @@ export default function UserFeed() {
             <Card className="mb-4">
               <CardContent className="p-4">
                 <h2 className="font-bold mb-2">AAPL Stock</h2>
-                <div className="w-full" style={{ minHeight: "200px" }}>
-                  {mounted && (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={stockData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Line
-                          type="monotone"
-                          dataKey="value"
-                          stroke="#8884d8"
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  )}
+                <div className="bg-gray-200 h-40 flex items-center justify-center">
+                  [Candlestick Chart Placeholder]
                 </div>
               </CardContent>
             </Card>
