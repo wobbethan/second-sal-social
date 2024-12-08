@@ -35,7 +35,7 @@ export default function RootLayout({
             <div className="lg:block hidden">
               <SidebarComponent />
             </div>
-            <main className="flex-1 w-full">{children}</main>
+            {children}
           </div>
         </SidebarProvider>
       </body>

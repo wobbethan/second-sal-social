@@ -4,13 +4,6 @@ import { DividendData } from "@/types/finnhub";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DollarSign, Loader2 } from "lucide-react";
 import dayjs from "dayjs";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarFooter,
-  SidebarProvider,
-} from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { predictNextDividend } from "@/actions/dividends";
 import { useState } from "react";
@@ -45,8 +38,8 @@ function TimelineItem({
   };
 
   const lineClasses = isNew
-    ? "animate-draw-line absolute left-[7px] top-3 bottom-0 w-[2px] bg-gray-200 last:hidden origin-top"
-    : "absolute left-[7px] top-3 bottom-0 w-[2px] bg-gray-200 last:hidden";
+    ? "animate-draw-line absolute left-[7px] top-0 bottom-0 w-[2px] bg-gray-200 last:hidden origin-top"
+    : "absolute left-[7px] top-0 bottom-0 w-[2px] bg-gray-200 last:hidden";
 
   return (
     <div
@@ -56,7 +49,7 @@ function TimelineItem({
     >
       <div className={lineClasses} />
       <div
-        className={`absolute left-0 top-1 w-4 h-4 rounded-full ${statusColors[status]}`}
+        className={`absolute left-0 top-0 w-4 h-4 rounded-full ${statusColors[status]}`}
       >
         {isFirst && (
           <span
@@ -83,9 +76,7 @@ function TimelineItem({
 interface DividendTimelineProps {
   dividends: DividendData[];
   ticker: string;
-  onDividendsUpdate: (newDividends: DividendData[]) => void;
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
+  onDividendsUpdate?: (dividends: DividendData[]) => void;
   className?: string;
 }
 
@@ -93,8 +84,6 @@ export function DividendTimeline({
   dividends,
   ticker,
   onDividendsUpdate,
-  open,
-  onOpenChange,
   className,
 }: DividendTimelineProps) {
   const [isLoading, setIsLoading] = useState(false);
@@ -133,7 +122,7 @@ export function DividendTimeline({
         }));
 
       setDividendHistory(newDividendData);
-      onDividendsUpdate(newDividendData as DividendData[]);
+      onDividendsUpdate?.(newDividendData as DividendData[]);
     } catch (error) {
       console.error("Failed to predict next dividend:", error);
     } finally {
@@ -147,21 +136,20 @@ export function DividendTimeline({
   );
 
   return (
-    <Sidebar
-      side="right"
+    <div
       className={cn(
-        "bg-muted border-l [--sidebar-width:300px] flex flex-col h-full",
+        "bg-muted border-l w-[300px] flex flex-col h-full",
         className
       )}
     >
-      <SidebarHeader className="flex-none px-6 py-4 border-b">
+      <div className="flex-none px-6 py-4 border-b">
         <h2 className="text-xl font-semibold mb-2">Dividend Timeline</h2>
         <p className="text-sm text-muted-foreground">
           Historical and predicted dividend payments
         </p>
-      </SidebarHeader>
+      </div>
 
-      <SidebarContent className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0">
         <ScrollArea className="h-full">
           <div className="px-6 py-4">
             <div className="space-y-4">
@@ -184,9 +172,9 @@ export function DividendTimeline({
             </div>
           </div>
         </ScrollArea>
-      </SidebarContent>
+      </div>
 
-      <SidebarFooter className="flex-none px-6 py-4 border-t">
+      <div className="flex-none px-6 py-4 border-t">
         <button
           onClick={handlePrediction}
           disabled={isLoading}
@@ -202,7 +190,7 @@ export function DividendTimeline({
           )}
           {isLoading ? "Predicting..." : "Predict next dividend"}
         </button>
-      </SidebarFooter>
-    </Sidebar>
+      </div>
+    </div>
   );
 }

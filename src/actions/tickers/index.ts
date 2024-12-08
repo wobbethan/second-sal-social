@@ -22,7 +22,7 @@ export const finnhub = axios.create({
 // Helper function to fetch candle data
 export async function fetchCandleData(ticker: string): Promise<CandleData> {
   const endDate = Math.floor(Date.now() / 1000);
-  const startDate = endDate - 30 * 24 * 60 * 60; // 30 days ago
+  const startDate = endDate - 365 * 24 * 60 * 60; // 1 years ago
 
   try {
     const response = await finnhub.get(`/stock/candle`, {

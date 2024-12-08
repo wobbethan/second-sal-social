@@ -9,13 +9,13 @@ interface CompanyNewsProps {
 
 function formatDateTime(unixTimestamp: number): string {
   const date = new Date(unixTimestamp * 1000);
-  return date.toLocaleString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
+  return date.toLocaleString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
   });
 }
 
@@ -66,15 +66,13 @@ export default function CompanyNews({
                 rel="noopener noreferrer"
                 className="flex flex-col h-full"
               >
-                {article.image && (
-                  <div className="relative h-48 overflow-hidden">
-                    <img
-                      src={article.image}
-                      alt={article.headline}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
+                <div className="relative h-48 overflow-hidden">
+                  <img
+                    src={article.image || companyLogo}
+                    alt={article.headline}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
                 <div className="flex flex-col flex-1 p-4">
                   <h3 className="font-semibold line-clamp-2 mb-2">
                     {article.headline}

@@ -45,4 +45,5 @@ export interface DividendData {
   currency: string; // Currency
   adjustedAmount: number; // Dividend amount adjusted for splits
   timeline?: "confirmed" | "most recent" | "predicted";
+  freq?: number;
 }

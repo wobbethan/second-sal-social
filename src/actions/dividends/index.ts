@@ -19,19 +19,29 @@ export async function predictNextDividend(
     // Prepare the prompt for OpenAI
     const prompt = `Given the following dividend history (from most recent):
 ${sortedData
-  .map((d) => `PayDate: ${d.payDate}, ExDate: ${d.date}, Amount: $${d.amount}`)
+  .map(
+    (d) =>
+      `PayDate: ${d.payDate}, ExDate: ${d.date}, Amount: $${d.amount}, freq: ${d.freq}`
+  )
   .join("\n")}
 
 Analyze the dividend payment history focusing on:
-1. The quarterly/monthly pattern of PayDates (primary pattern)
-2. The fixed duration between PayDates (typically 90 days for quarterly)
-3. The exact number of days between each ExDate and its PayDate
-4. Recent trends in dividend amounts
+1. The freq field of the json data. This will help you to identify the payment frequency. here is a key for the freq values:
+  freq = 0: Annually
+  freq = 1: Monthly
+  freq = 2: Quarterly
+  freq = 3: Semi-annually
+  freq = 4: Other/Unknown
+  freq = 5: Bimonthly
+  freq = 6: Trimesterly
+  freq = 7: Weekly 
+2. The exact number of days between each ExDate and its PayDate
+3. Recent trends in dividend amounts
 
 For the next dividend prediction:
 1. First determine the next PayDate by:
-   - Identifying the quarterly/monthly cycle
-   - Adding the fixed duration to the most recent PayDate
+   - Using the freq value to determine the payment cycle
+   - Adding the appropriate duration based on the freq value
    - Maintaining the same day-of-month pattern
 
 2. Then calculate the ExDate by:
@@ -41,7 +51,7 @@ For the next dividend prediction:
 
 Return ONLY a JSON object for the next predicted dividend in this format:
 {
-  "payDate": "YYYY-MM-DD",   // Next payment date based on quarterly cycle
+  "payDate": "YYYY-MM-DD",   // Next payment date based on freq value
   "date": "YYYY-MM-DD",      // ExDate, using exact historical gap from PayDate
   "amount": XX.XX            // Predicted amount based on recent trends
 }
@@ -111,6 +121,23 @@ export async function analyzeDividends(
   currentPrice: number
 ) {
   try {
+    // If the question is about future dividends, use predictNextDividend
+    const futureDividendKeywords = ['next dividend', 'future dividend', 'upcoming dividend', 'predict', 'when will'];
+    const isAskingAboutFuture = futureDividendKeywords.some(keyword => 
+      question.toLowerCase().includes(keyword)
+    );
+
+    if (isAskingAboutFuture) {
+      const predictions = await predictNextDividend(dividendHistory);
+      const nextDividend = predictions[0]; // Get the predicted dividend
+
+      return {
+        analysis: `The next dividend is predicted to be $${nextDividend.amount} with an ex-dividend date of ${nextDividend.date} and payment date of ${nextDividend.payDate}.`,
+        predictions: predictions
+      };
+    }
+
+    // For other questions, use the existing OpenAI analysis
     const systemPrompt = `You are a dividend analysis expert. You have access to historical dividend data for ${ticker}. 
     When predictions are needed, use the historical pattern to predict future dividends.
     If calculations involve share quantities or investment amounts, show your work clearly.
