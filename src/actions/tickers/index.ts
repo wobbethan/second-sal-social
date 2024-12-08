@@ -98,7 +98,6 @@ export async function getTickerData(ticker: string) {
 }
 
 export async function searchTicker(query: string) {
-  console.log("searching for", query);
   if (!query || query.length < 1) return [];
 
   try {

@@ -5,6 +5,20 @@ const config: Config = {
   content: ["./src/**/*.{js,ts,jsx,tsx}", "./public/**/*.html"],
   theme: {
     extend: {
+      keyframes: {
+        "draw-line": {
+          "0%": { transform: "scaleY(0)" },
+          "100%": { transform: "scaleY(1)" },
+        },
+        "fade-in": {
+          "0%": { opacity: "0", transform: "translateY(-10px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+      },
+      animation: {
+        "draw-line": "draw-line 0.5s ease-out forwards",
+        "fade-in": "fade-in 0.5s ease-out forwards",
+      },
       colors: {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",

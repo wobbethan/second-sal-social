@@ -17,6 +17,8 @@ import {
 } from "recharts";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import SidebarComponent from "@/components/ui/home-sidebar";
+import { predictNextDividend } from "@/actions/dividends";
+import { DividendChatDialog } from "./dividend-chat-dialog";
 
 interface StockPageProps {
   ticker: string;
@@ -64,29 +66,39 @@ function DividendTimelineItem({
   exDate,
   status = "past",
   isFirst = false,
+  isNew = false,
 }: {
   date: string;
   amount: string;
   exDate: string;
   status?: "past" | "recent" | "predicted";
   isFirst?: boolean;
+  isNew?: boolean;
 }) {
   const statusColors = {
-    past: "bg-blue-500",
+    past: "bg-gray-400",
     recent: "bg-green-500",
-    predicted: "bg-orange-500",
+    predicted: "bg-blue-400",
   };
 
+  const lineClasses = isNew
+    ? "animate-draw-line absolute left-[7px] top-3 bottom-0 w-[2px] bg-gray-200 last:hidden origin-top"
+    : "absolute left-[7px] top-3 bottom-0 w-[2px] bg-gray-200 last:hidden";
+
   return (
-    <div className="relative pl-8 pb-8 last:pb-0">
+    <div
+      className={`relative pl-8 pb-8 last:pb-0 ${
+        isNew ? "animate-fade-in" : ""
+      }`}
+    >
       {/* Timeline vertical line */}
-      <div className="absolute left-[7px] top-3 bottom-0 w-[2px] bg-gray-200 last:hidden" />
+      <div className={lineClasses} />
 
       {/* Timeline dot */}
       <div
         className={`absolute left-0 top-1 w-4 h-4 rounded-full ${statusColors[status]}`}
       >
-        {isFirst && (
+        {status === "recent" && (
           <span className="absolute inset-[2px] animate-[ping_3s_ease-in-out_infinite] rounded-full bg-green-500/40" />
         )}
       </div>
@@ -109,13 +121,45 @@ function DividendTimelineItem({
 
 export function StockPageComponent({
   ticker,
-  dividendData,
+  dividendData: initialDividendData,
   tickerDetails,
   tickerNews,
   aggregateBars,
 }: StockPageProps) {
   const [selectedTab, setSelectedTab] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [dividendData, setDividendData] = useState(() => {
+    // Initialize with timeline field
+    const sortedData = [...initialDividendData].sort(
+      (a, b) => dayjs(b.payment_date).unix() - dayjs(a.payment_date).unix()
+    );
+    return sortedData;
+  });
+
+  const handleAddToBundle = async () => {
+    try {
+      const mappedData = dividendData.map((d) => ({
+        date: d.payment_date,
+        amount: parseFloat(d.amount),
+      }));
+      const updatedData = await predictNextDividend(mappedData);
+
+      // Convert back to the original format
+      const newDividendData = updatedData.map((d) => ({
+        payment_date: d.date,
+        amount: d.amount.toString(),
+        ex_dividend_date: d.date,
+        declaration_date: d.date,
+        record_date: d.date,
+        isNew: true,
+      }));
+
+      setDividendData(newDividendData);
+      setDividendData((data) => data.map((d) => ({ ...d, isNew: false })));
+    } catch (error) {
+      console.error("Failed to predict next dividend:", error);
+    }
+  };
 
   // Calculate current price and changes from aggregate bars
   const currentPrice = aggregateBars[aggregateBars.length - 1]?.c || 0;
@@ -130,6 +174,8 @@ export function StockPageComponent({
     (sum, dividend) => sum + parseFloat(dividend.amount),
     0
   );
+
+  const [chatOpen, setChatOpen] = useState(false);
 
   return (
     <div className="flex flex-col lg:flex-row h-full">
@@ -324,15 +370,20 @@ export function StockPageComponent({
                         : "past"
                     }
                     isFirst={index === 0}
+                    isNew={dividend.isNew}
                   />
                 ))}
             </div>
           </div>
         </ScrollArea>
-        <div className="p-4 border-t">
-          <Button className="w-full">
-            <DollarSign className="mr-2 h-4 w-4" /> Add to Bundle
-          </Button>
+        <div className="p-4 border-t w-full">
+          <button
+            onClick={handleAddToBundle}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center justify-center gap-2 w-full"
+          >
+            <DollarSign className="h-4 w-4" />
+            <h1>Predict next dividend date</h1>
+          </button>
         </div>
       </aside>
 
@@ -378,20 +429,31 @@ export function StockPageComponent({
                               : "past"
                           }
                           isFirst={index === 0}
+                          isNew={dividend.isNew}
                         />
                       ))}
                   </div>
                 </div>
               </ScrollArea>
               <div className="p-4 border-t">
-                <Button className="w-full">
-                  <DollarSign className="mr-2 h-4 w-4" /> Add to Bundle
-                </Button>
+                <button
+                  onClick={handleAddToBundle}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2 w-full"
+                >
+                  <DollarSign className="h-4 w-4" />
+                  Predict next dividend date
+                </button>
               </div>
             </div>
           </SheetContent>
         </Sheet>
       </div>
+
+      <DividendChatDialog
+        open={chatOpen}
+        onOpenChange={setChatOpen}
+        dividendData={dividendData}
+      />
     </div>
   );
 }
