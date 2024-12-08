@@ -96,7 +96,18 @@ export async function fetchDividendData(
         to: endDate,
       },
     });
-    return response.data;
+
+    // Sort dividends by date in descending order and add timeline
+    const sortedDividends = response.data.sort(
+      (a: DividendData, b: DividendData) =>
+        new Date(b.payDate).getTime() - new Date(a.payDate).getTime()
+    );
+
+    // Add timeline field to each dividend
+    return sortedDividends.map((dividend: DividendData, index: number) => ({
+      ...dividend,
+      timeline: index === 0 ? "most recent" : "confirmed",
+    }));
   } catch (error) {
     console.error("Error fetching dividend data:", error);
     throw error;
@@ -110,7 +121,6 @@ export async function getTickerData(
   ticker = ticker.toUpperCase();
 
   try {
-
     // Fetch all data in parallel
     const [candleData, companyProfile, newsData, dividendData] =
       await Promise.all([
@@ -136,9 +146,9 @@ export async function getTickerData(
     return {
       ticker: ticker.toUpperCase(),
       companyProfile: companyProfile,
-      newsItems: newsData.slice(newsData.length-10, newsData.length), // Take the 10 most recent
+      newsItems: newsData.slice(newsData.length - 3, newsData.length), // Take the 3 most recent
       dividends: dividendData,
-      candles: candleData
+      candles: candleData,
     };
   } catch (error) {
     console.error("Error in getTickerData:", error);

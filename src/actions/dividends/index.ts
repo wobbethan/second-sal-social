@@ -1,16 +1,11 @@
 "use server";
 
 import OpenAI from "openai";
+import { DividendData } from "@/types/finnhub";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-
-interface DividendData {
-  date: string;
-  amount: number;
-  timeline?: "most recent" | "predicted";
-}
 
 export async function predictNextDividend(
   dividendData: DividendData[]
@@ -25,16 +20,25 @@ export async function predictNextDividend(
     const prompt = `Given the following dividend history (from most recent):
 ${sortedData.map((d) => `Date: ${d.date}, Amount: $${d.amount}`).join("\n")}
 
-analyze the data to identify patterns in the dividend payout schedule and amounts. Consider factors such as the frequency of payouts (e.g., quarterly, semi-annually, annually), specific dates within each period, and any trends or consistencies in the payout amounts. Use these insights to predict the next dividend date and amount, ensuring your prediction aligns with the identified historical patterns and rationalizing the consistency or deviation based on the observed data. Do not include any explanatory text in your response; return only a JSON object in this exact format: {"date": "YYYY-MM-DD", "amount": X.XX}.`;
+Analyze this dividend history and predict the next dividend payment.
+Consider the payment frequency, dates, and amount trends.
 
-    // Call OpenAI API
+Return ONLY a JSON object for the next predicted dividend in this format:
+{
+  "date": "YYYY-MM-DD",
+  "amount": XX.XX
+}
+
+Do not include any explanatory text.`;
+
+    // Get prediction from OpenAI
     const completion = await openai.chat.completions.create({
       messages: [{ role: "user", content: prompt }],
       model: "gpt-3.5-turbo",
       temperature: 0.3,
     });
 
-    // Parse the response
+    // Parse the prediction
     const prediction = JSON.parse(
       completion.choices[0].message.content || "{}"
     );
@@ -44,22 +48,125 @@ analyze the data to identify patterns in the dividend payout schedule and amount
       throw new Error("Invalid prediction format received");
     }
 
-    // Create new dividend data array with updated timeline fields
-    const newDividendData = [
-      {
-        date: prediction.date,
-        amount: prediction.amount,
-        timeline: "predicted" as const,
-      },
-      ...sortedData.map((dividend, index) => ({
-        ...dividend,
-        timeline: index === 0 ? ("most recent" as const) : undefined,
-      })),
-    ];
+    // Create the predicted dividend entry
+    const predictedDividend: DividendData = {
+      symbol: sortedData[0].symbol,
+      date: prediction.date,
+      amount: prediction.amount,
+      payDate: prediction.date,
+      recordDate: prediction.date,
+      currency: "USD",
+      adjustedAmount: prediction.amount,
+      timeline: "predicted",
+    };
 
-    return newDividendData;
+    // Return prediction + original data unchanged
+    return [predictedDividend, ...dividendData];
   } catch (error) {
     console.error("Error predicting next dividend:", error);
+    throw error;
+  }
+}
+
+// Helper function to determine payment frequency
+function getFrequency(dividends: DividendData[]): string {
+  if (dividends.length < 2) return "Unknown";
+
+  const dates = dividends.map((d) => new Date(d.date).getTime());
+  const intervals = dates
+    .slice(0, -1)
+    .map((date, i) =>
+      Math.round((date - dates[i + 1]) / (24 * 60 * 60 * 1000))
+    );
+
+  const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+
+  if (avgInterval <= 32) return "Monthly";
+  if (avgInterval <= 95) return "Quarterly";
+  if (avgInterval <= 185) return "Semi-annually";
+  return "Annually";
+}
+
+export async function analyzeDividends(
+  question: string,
+  dividendHistory: DividendData[],
+  ticker: string,
+  currentPrice: number
+) {
+  try {
+    const systemPrompt = `You are a dividend analysis expert. You have access to historical dividend data for ${ticker}. 
+    When predictions are needed, use the historical pattern to predict future dividends.
+    If calculations involve share quantities or investment amounts, show your work clearly.
+    Current stock price: $${currentPrice}
+    
+    Rules:
+    1. If asked about future dividends, analyze the pattern and make predictions
+    2. For investment calculations, use the most recent dividend amount as reference
+    3. Always explain your reasoning
+    4. If predictions are made, format them as JSON within your response
+    5. Keep responses concise but informative`;
+
+    const formattedDividends = dividendHistory.map((d) => ({
+      date: d.payDate,
+      amount: d.amount,
+      exDate: d.date,
+    }));
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: `Historical dividend data: ${JSON.stringify(
+            formattedDividends
+          )}\n\nQuestion: ${question}`,
+        },
+      ],
+      functions: [
+        {
+          name: "updateDividendPredictions",
+          description: "Update the dividend timeline with new predictions",
+          parameters: {
+            type: "object",
+            properties: {
+              predictions: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    payDate: { type: "string" },
+                    amount: { type: "number" },
+                    date: { type: "string" },
+                    recordDate: { type: "string" },
+                    currency: { type: "string" },
+                    adjustedAmount: { type: "number" },
+                    symbol: { type: "string" },
+                  },
+                },
+              },
+            },
+            required: ["predictions"],
+          },
+        },
+      ],
+      function_call: "auto",
+    });
+
+    const responseMessage = response.choices[0].message;
+    let newPredictions: DividendData[] = [];
+
+    if (responseMessage.function_call?.name === "updateDividendPredictions") {
+      const functionArgs = JSON.parse(responseMessage.function_call.arguments);
+      newPredictions = functionArgs.predictions;
+    }
+
+    return {
+      analysis: responseMessage.content,
+      predictions: newPredictions,
+    };
+  } catch (error) {
+    console.error("Error analyzing dividends:", error);
     throw error;
   }
 }
