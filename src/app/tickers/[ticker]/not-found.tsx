@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 
 export default function NotFound() {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 w-full">
       <Card className="p-8 max-w-md w-full mx-4">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">

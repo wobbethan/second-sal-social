@@ -19,46 +19,10 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import SidebarComponent from "@/components/ui/home-sidebar";
 import { predictNextDividend } from "@/actions/dividends";
 import { DividendChatDialog } from "./dividend-chat-dialog";
-
-interface StockPageProps {
-  ticker: string;
-  dividendData: {
-    ex_dividend_date: string;
-    declaration_date: string;
-    record_date: string;
-    payment_date: string;
-    amount: string;
-  }[];
-  tickerDetails: {
-    name: string;
-    market_cap: number;
-    description: string;
-    peRatio: number;
-    industry: string;
-    exchange: string;
-  };
-  tickerNews: {
-    id: string;
-    publisher: {
-      name: string;
-      homepage_url: string;
-    };
-    title: string;
-    author: string;
-    published_utc: string;
-    article_url: string;
-    description: string;
-    image_url: string;
-  }[];
-  aggregateBars: Array<{
-    t: string; // date string instead of timestamp
-    c: number; // close
-    h: number; // high
-    l: number; // low
-    o: number; // open
-    v: number; // volume
-  }>;
-}
+import { StockPageProps } from "@/types/props";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import CompanyOverview from "./company-overview";
+import CompanyNews from "./company-news";
 
 function DividendTimelineItem({
   date,
@@ -119,66 +83,63 @@ function DividendTimelineItem({
   );
 }
 
-export function StockPageComponent({
+export default function StockPage({
   ticker,
-  dividendData: initialDividendData,
-  tickerDetails,
-  tickerNews,
-  aggregateBars,
+  companyProfile,
+  newsItems,
+  dividends,
+  candles,
 }: StockPageProps) {
   const [selectedTab, setSelectedTab] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [dividendData, setDividendData] = useState(() => {
+  const [dividendHistory, setDividendHistory] = useState(() => {
     // Initialize with timeline field
-    const sortedData = [...initialDividendData].sort(
-      (a, b) => dayjs(b.payment_date).unix() - dayjs(a.payment_date).unix()
+    const sortedData = [...dividends].sort(
+      (a, b) => dayjs(b.payDate).unix() - dayjs(a.payDate).unix()
     );
     return sortedData;
   });
 
-  const handleAddToBundle = async () => {
+  const handlePrediction = async () => {
     try {
-      const mappedData = dividendData.map((d) => ({
-        date: d.payment_date,
-        amount: parseFloat(d.amount),
+      const mappedData = dividendHistory.map((d) => ({
+        date: d.payDate,
+        amount: d.amount,
       }));
       const updatedData = await predictNextDividend(mappedData);
 
       // Convert back to the original format
       const newDividendData = updatedData.map((d) => ({
-        payment_date: d.date,
-        amount: d.amount.toString(),
-        ex_dividend_date: d.date,
-        declaration_date: d.date,
-        record_date: d.date,
-        isNew: true,
+        symbol: ticker,
+        date: d.date,
+        amount: d.amount,
+        payDate: d.date,
+        recordDate: d.date,
+        currency: "USD",
+        adjustedAmount: d.amount,
       }));
 
-      setDividendData(newDividendData);
-      setDividendData((data) => data.map((d) => ({ ...d, isNew: false })));
+      setDividendHistory(newDividendData);
     } catch (error) {
       console.error("Failed to predict next dividend:", error);
     }
   };
 
-  // Calculate current price and changes from aggregate bars
-  const currentPrice = aggregateBars[aggregateBars.length - 1]?.c || 0;
-  const previousPrice =
-    aggregateBars[aggregateBars.length - 2]?.c || currentPrice;
+  // Calculate current price and changes
+  const currentPrice = candles.c[candles.c.length - 1] || 0;
+  const previousPrice = candles.c[candles.c.length - 2] || currentPrice;
   const priceChange = currentPrice - previousPrice;
   const priceChangePercent = (priceChange / previousPrice) * 100;
 
-  // Calculate next predicted payment (3 months after most recent)
-
-  const totalDividends = dividendData.reduce(
-    (sum, dividend) => sum + parseFloat(dividend.amount),
+  const totalDividends = dividendHistory.reduce(
+    (sum, dividend) => sum + dividend.amount,
     0
   );
 
   const [chatOpen, setChatOpen] = useState(false);
 
   return (
-    <div className="flex flex-col lg:flex-row h-full">
+    <div className="flex flex-col lg:flex-row h-screen">
       {/* Mobile Menu Button - Only visible on small screens */}
       <div className="lg:hidden p-4">
         <Sheet>
@@ -193,26 +154,44 @@ export function StockPageComponent({
         </Sheet>
       </div>
 
-      <ScrollArea className="flex-1 p-6">
+      <ScrollArea className="flex-1 p-6 w-full">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold">
-            {tickerDetails.name} ({ticker})
-            <span className="ml-2 text-muted-foreground">
-              {tickerDetails.exchange}
-            </span>
-          </h1>
-          <div className="flex items-center mt-2">
-            <span className="text-2xl font-semibold">
-              ${currentPrice.toFixed(2)}
-            </span>
-            <span
-              className={`ml-2 ${
-                priceChange >= 0 ? "text-green-500" : "text-red-500"
-              }`}
-            >
-              {priceChange >= 0 ? "+" : ""}
-              {priceChange.toFixed(2)} ({priceChangePercent.toFixed(2)}%)
-            </span>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <Avatar className="h-8 w-8">
+                <AvatarImage
+                  src={companyProfile.logo}
+                  alt={companyProfile.name}
+                />
+                <AvatarFallback>{ticker.slice(0, 2)}</AvatarFallback>
+              </Avatar>
+              <a
+                href={companyProfile.weburl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-blue-600 hover:underline"
+              >
+                <h1 className="text-3xl font-bold flex items-center gap-2">
+                  {companyProfile.name} ({ticker})
+                </h1>
+              </a>
+              <span className="text-lg text-muted-foreground font-normal">
+                {companyProfile.exchange}
+              </span>
+            </div>
+            <div className="flex items-center">
+              <span className="text-2xl font-semibold">
+                ${currentPrice.toFixed(2)}
+              </span>
+              <span
+                className={`ml-2 ${
+                  priceChange >= 0 ? "text-green-500" : "text-red-500"
+                }`}
+              >
+                {priceChange >= 0 ? "+" : ""}
+                {priceChange.toFixed(2)} ({priceChangePercent.toFixed(2)}%)
+              </span>
+            </div>
           </div>
         </div>
 
@@ -223,7 +202,7 @@ export function StockPageComponent({
           <CardContent>
             <div className="h-[400px]">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={aggregateBars}>
+                <LineChart data={candles}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="t"
@@ -252,92 +231,13 @@ export function StockPageComponent({
           </CardContent>
         </Card>
 
-        <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="news">News</TabsTrigger>
-          </TabsList>
-          <TabsContent value="overview">
-            <Card>
-              <CardHeader>
-                <CardTitle>Company Overview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h3 className="font-semibold mb-2">Key Statistics</h3>
-                    <ul className="space-y-2">
-                      <li>
-                        <span className="font-medium">Market Cap:</span> $
-                        {tickerDetails.market_cap.toLocaleString()}
-                      </li>
-                      <li>
-                        <span className="font-medium">P/E Ratio:</span>{" "}
-                        {tickerDetails.peRatio}
-                      </li>
-                      <li>
-                        <span className="font-medium">Dividend Yield:</span>{" "}
-                        {((totalDividends / currentPrice) * 100).toFixed(2)}%
-                      </li>
-                      <li>
-                        <span className="font-medium">52 Week Range:</span> $
-                        {Math.min(...aggregateBars.map((bar) => bar.l)).toFixed(
-                          2
-                        )}{" "}
-                        - $
-                        {Math.max(...aggregateBars.map((bar) => bar.h)).toFixed(
-                          2
-                        )}
-                      </li>
-                    </ul>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-2">
-                      About {tickerDetails.name}
-                    </h3>
-                    <p>{tickerDetails.description}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="news">
-            <Card>
-              <CardHeader>
-                <CardTitle>Latest News</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {tickerNews.slice(0, 3).map((article, index) => (
-                    <div
-                      key={index}
-                      className="border rounded-md overflow-hidden"
-                    >
-                      <a href={article.article_url} className="block">
-                        <div className="p-2">
-                          <h3 className="font-semibold">{article.title}</h3>
-                        </div>
-                        <img
-                          src={article.image_url}
-                          alt={article.title}
-                          className="w-full h-48 object-contain"
-                        />
-                        <div className="flex justify-between p-2 text-sm text-muted-foreground">
-                          <span>{article.publisher.name}</span>
-                          <span>
-                            {new Date(
-                              article.published_utc
-                            ).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        <CompanyOverview {...companyProfile} />
+
+        <CompanyNews
+          newsItems={newsItems}
+          companyLogo={companyProfile.logo}
+          companyName={companyProfile.name}
+        />
       </ScrollArea>
 
       {/* Right sidebar - Hidden on mobile */}
@@ -351,19 +251,18 @@ export function StockPageComponent({
         <ScrollArea className="flex-1">
           <div className="p-4">
             <div className="space-y-0">
-              {dividendData
+              {dividendHistory
                 .sort(
-                  (a, b) =>
-                    dayjs(b.payment_date).unix() - dayjs(a.payment_date).unix()
+                  (a, b) => dayjs(b.payDate).unix() - dayjs(a.payDate).unix()
                 )
                 .map((dividend, index) => (
                   <DividendTimelineItem
                     key={index}
-                    date={dividend.payment_date}
-                    amount={dividend.amount}
-                    exDate={dividend.ex_dividend_date}
+                    date={dividend.payDate}
+                    amount={dividend.amount.toString()}
+                    exDate={dividend.date}
                     status={
-                      dayjs(dividend.payment_date).isAfter(dayjs())
+                      dayjs(dividend.payDate).isAfter(dayjs())
                         ? "predicted"
                         : index === 0
                         ? "recent"
@@ -378,7 +277,7 @@ export function StockPageComponent({
         </ScrollArea>
         <div className="p-4 border-t w-full">
           <button
-            onClick={handleAddToBundle}
+            onClick={handlePrediction}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center justify-center gap-2 w-full"
           >
             <DollarSign className="h-4 w-4" />
@@ -409,20 +308,19 @@ export function StockPageComponent({
               <ScrollArea className="flex-1">
                 <div className="p-4">
                   <div className="space-y-0">
-                    {dividendData
+                    {dividendHistory
                       .sort(
                         (a, b) =>
-                          dayjs(b.payment_date).unix() -
-                          dayjs(a.payment_date).unix()
+                          dayjs(b.payDate).unix() - dayjs(a.payDate).unix()
                       )
                       .map((dividend, index) => (
                         <DividendTimelineItem
                           key={index}
-                          date={dividend.payment_date}
-                          amount={dividend.amount}
-                          exDate={dividend.ex_dividend_date}
+                          date={dividend.payDate}
+                          amount={dividend.amount.toString()}
+                          exDate={dividend.date}
                           status={
-                            dayjs(dividend.payment_date).isAfter(dayjs())
+                            dayjs(dividend.payDate).isAfter(dayjs())
                               ? "predicted"
                               : index === 0
                               ? "recent"
@@ -437,7 +335,7 @@ export function StockPageComponent({
               </ScrollArea>
               <div className="p-4 border-t">
                 <button
-                  onClick={handleAddToBundle}
+                  onClick={handlePrediction}
                   className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2 w-full"
                 >
                   <DollarSign className="h-4 w-4" />
@@ -452,7 +350,7 @@ export function StockPageComponent({
       <DividendChatDialog
         open={chatOpen}
         onOpenChange={setChatOpen}
-        dividendData={dividendData}
+        dividendData={dividendHistory}
       />
     </div>
   );
