@@ -79,7 +79,11 @@ interface SearchResult {
   matchScore: string;
 }
 
-export function SearchBar() {
+interface SearchBarProps {
+  className?: string;
+}
+
+export function SearchBar({ className }: SearchBarProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);

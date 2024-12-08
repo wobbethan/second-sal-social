@@ -147,64 +147,62 @@ export function DividendTimeline({
   );
 
   return (
-    <SidebarProvider open={open} onOpenChange={onOpenChange}>
-      <Sidebar
-        side="right"
-        className={cn(
-          "bg-background border-l [--sidebar-width:300px] flex flex-col h-full",
-          className
-        )}
-      >
-        <SidebarHeader className="flex-none px-6 py-4 border-b">
-          <h2 className="text-xl font-semibold mb-2">Dividend Timeline</h2>
-          <p className="text-sm text-muted-foreground">
-            Historical and predicted dividend payments
-          </p>
-        </SidebarHeader>
+    <Sidebar
+      side="right"
+      className={cn(
+        "bg-muted border-l [--sidebar-width:300px] flex flex-col h-full",
+        className
+      )}
+    >
+      <SidebarHeader className="flex-none px-6 py-4 border-b">
+        <h2 className="text-xl font-semibold mb-2">Dividend Timeline</h2>
+        <p className="text-sm text-muted-foreground">
+          Historical and predicted dividend payments
+        </p>
+      </SidebarHeader>
 
-        <SidebarContent className="flex-1 min-h-0">
-          <ScrollArea className="h-full">
-            <div className="px-6 py-4">
-              <div className="space-y-4">
-                {sortedDividends.map((dividend, index) => (
-                  <TimelineItem
-                    key={`${dividend.payDate}-${dividend.timeline}`}
-                    date={dividend.payDate}
-                    amount={dividend.amount}
-                    exDate={dividend.date}
-                    status={
-                      dividend.timeline as
-                        | "confirmed"
-                        | "most recent"
-                        | "predicted"
-                    }
-                    isFirst={index === 0}
-                    isNew={dividend.timeline === "predicted"}
-                  />
-                ))}
-              </div>
+      <SidebarContent className="flex-1 min-h-0">
+        <ScrollArea className="h-full">
+          <div className="px-6 py-4">
+            <div className="space-y-4">
+              {sortedDividends.map((dividend, index) => (
+                <TimelineItem
+                  key={`${dividend.payDate}-${dividend.timeline}`}
+                  date={dividend.payDate}
+                  amount={dividend.amount}
+                  exDate={dividend.date}
+                  status={
+                    dividend.timeline as
+                      | "confirmed"
+                      | "most recent"
+                      | "predicted"
+                  }
+                  isFirst={index === 0}
+                  isNew={dividend.timeline === "predicted"}
+                />
+              ))}
             </div>
-          </ScrollArea>
-        </SidebarContent>
+          </div>
+        </ScrollArea>
+      </SidebarContent>
 
-        <SidebarFooter className="flex-none px-6 py-4 border-t">
-          <button
-            onClick={handlePrediction}
-            disabled={isLoading}
-            className={cn(
-              "w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center justify-center gap-2",
-              isLoading && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <DollarSign className="h-4 w-4" />
-            )}
-            {isLoading ? "Predicting..." : "Predict next dividend"}
-          </button>
-        </SidebarFooter>
-      </Sidebar>
-    </SidebarProvider>
+      <SidebarFooter className="flex-none px-6 py-4 border-t">
+        <button
+          onClick={handlePrediction}
+          disabled={isLoading}
+          className={cn(
+            "w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center justify-center gap-2",
+            isLoading && "opacity-50 cursor-not-allowed"
+          )}
+        >
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <DollarSign className="h-4 w-4" />
+          )}
+          {isLoading ? "Predicting..." : "Predict next dividend"}
+        </button>
+      </SidebarFooter>
+    </Sidebar>
   );
 }

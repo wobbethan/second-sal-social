@@ -22,6 +22,8 @@ import { StockPageProps } from "@/types/props";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import CompanyOverview from "./company-overview";
 import CompanyNews from "./company-news";
+import StockCandlestick from "./stock-candlestick";
+import { SearchBar } from "@/components/Stock Display/dashboard/user-feed";
 
 export default function StockPage({
   ticker,
@@ -49,98 +51,72 @@ export default function StockPage({
   return (
     <div className="flex h-screen bg-muted w-full">
       {/* Main Content Area */}
-      <div className="flex-1 overflow-auto w-full">
-        <div className="w-full mx-auto px-8 py-6 space-y-6">
-          {/* Company Header */}
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <Avatar className="h-8 w-8">
-                <AvatarImage
-                  src={companyProfile.logo}
-                  alt={companyProfile.name}
-                />
-                <AvatarFallback>{ticker.slice(0, 2)}</AvatarFallback>
-              </Avatar>
-              <a
-                href={companyProfile.weburl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-blue-600 hover:underline"
-              >
-                <h1 className="text-3xl font-bold flex items-center gap-2">
-                  {companyProfile.name} ({ticker})
-                </h1>
-              </a>
-              <span className="text-lg text-muted-foreground font-normal">
-                {companyProfile.exchange}
-              </span>
-            </div>
-            <div className="flex items-center">
-              <span className="text-2xl font-semibold">
-                ${currentPrice.toFixed(2)}
-              </span>
-              <span
-                className={`ml-2 ${
-                  priceChange >= 0 ? "text-green-500" : "text-red-500"
-                }`}
-              >
-                {priceChange >= 0 ? "+" : ""}
-                {priceChange.toFixed(2)} ({priceChangePercent.toFixed(2)}%)
-              </span>
-            </div>
-          </div>
-
-          {/* Stock Performance Card */}
-          {/* <Card>
-            <CardHeader>
-              <CardTitle>Stock Performance</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={candles}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="t"
-                      tickFormatter={(date) => dayjs(date).format("MMM D")}
-                    />
-                    <YAxis />
-                    <Tooltip
-                      formatter={(value: number) => [
-                        `$${value.toFixed(2)}`,
-                        "Price",
-                      ]}
-                      labelFormatter={(label) =>
-                        dayjs(label).format("MMMM D, YYYY")
-                      }
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="c"
-                      stroke="#8884d8"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card> */}
-
-          {/* Company Overview */}
-          <CompanyOverview {...companyProfile} />
-
-          {/* Company News */}
-          <CompanyNews
-            newsItems={newsItems}
-            companyLogo={companyProfile.logo}
-            companyName={companyProfile.name}
-          />
+      <div className="flex-1 min-h-0 overflow-hidden">
+        {/* Search Bar - Outside ScrollArea */}
+        <div className="px-8 pt-6">
+          <SearchBar className="w-full max-w-xl mx-auto" />
         </div>
+
+        {/* Scrollable Content */}
+        <ScrollArea className="h-[calc(100vh-5rem)]">
+          <div className="px-8 py-6 space-y-6 max-w-[1200px] mx-auto">
+            {/* Company Header */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage
+                    src={companyProfile.logo}
+                    alt={companyProfile.name}
+                  />
+                  <AvatarFallback>{ticker.slice(0, 2)}</AvatarFallback>
+                </Avatar>
+                <a
+                  href={companyProfile.weburl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-blue-600 hover:underline"
+                >
+                  <h1 className="text-3xl font-bold flex items-center gap-2">
+                    {companyProfile.name} ({ticker})
+                  </h1>
+                </a>
+                <span className="text-lg text-muted-foreground font-normal">
+                  {companyProfile.exchange}
+                </span>
+              </div>
+              <div className="flex items-center">
+                <span className="text-2xl font-semibold">
+                  ${currentPrice.toFixed(2)}
+                </span>
+                <span
+                  className={`ml-2 ${
+                    priceChange >= 0 ? "text-green-500" : "text-red-500"
+                  }`}
+                >
+                  {priceChange >= 0 ? "+" : ""}
+                  {priceChange.toFixed(2)} ({priceChangePercent.toFixed(2)}%)
+                </span>
+              </div>
+            </div>
+
+            {/* Candle Chart */}
+            <StockCandlestick candles={candles} />
+
+            {/* Company Overview */}
+            <CompanyOverview {...companyProfile} />
+
+            {/* Company News */}
+            <CompanyNews
+              newsItems={newsItems}
+              companyLogo={companyProfile.logo}
+              companyName={companyProfile.name}
+            />
+          </div>
+        </ScrollArea>
       </div>
 
       {/* Right Sidebar - Dividend Timeline */}
-      <div className="hidden lg:block w-[400px] border-l bg-muted">
+      <div className="hidden lg:block w-0 border-l bg-muted">
         <DividendTimeline
           dividends={dividendHistory}
           ticker={ticker}
