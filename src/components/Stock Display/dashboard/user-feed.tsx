@@ -224,10 +224,13 @@ export function SearchBar() {
               >
                 <div className="flex justify-between items-center">
                   <div>
-                    <div className="font-medium">{result.symbol}</div>
-                    <div className="text-sm text-gray-600">{result.name}</div>
+                    <div className="font-medium">
+                      {result.description} ({result.symbol})
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-400">{result.region}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {result.type}
+                  </div>
                 </div>
               </button>
             ))

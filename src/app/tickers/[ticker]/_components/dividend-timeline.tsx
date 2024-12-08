@@ -50,7 +50,7 @@ function TimelineItem({
 
   return (
     <div
-      className={`relative pl-8 pb-8 last:pb-0 w-full ${
+      className={`relative pl-8 pb-6 last:pb-0 ${
         isNew ? "animate-fade-in" : ""
       }`}
     >
@@ -65,15 +65,15 @@ function TimelineItem({
           />
         )}
       </div>
-      <div className="space-y-1 pt-0.5">
-        <div className="text-sm font-medium">
+      <div className="space-y-0">
+        <div className="text-base font-medium">
           {dayjs(date).format("MMMM D, YYYY")}
         </div>
         <div className="text-sm text-muted-foreground">
-          ${amount.toFixed(2)}
+          Ex-Dividend: {dayjs(exDate).format("MMM D, YYYY")}
         </div>
-        <div className="text-xs text-muted-foreground">
-          Ex-Dividend Date: {dayjs(exDate).format("MMM D, YYYY")}
+        <div className="text-sm font-semibold text-foreground">
+          ${amount.toFixed(2)}
         </div>
       </div>
     </div>
@@ -113,14 +113,8 @@ export function DividendTimeline({
     try {
       setIsLoading(true);
       const mappedData = dividendHistory.map((d) => ({
-        date: d.payDate,
-        amount: d.amount,
-        symbol: d.symbol,
-        payDate: d.payDate,
-        recordDate: d.recordDate,
-        currency: d.currency,
-        adjustedAmount: d.adjustedAmount,
-        timeline: d.timeline,
+        ...d,
+        timeline: d.timeline as "confirmed" | "most recent" | "predicted",
       }));
 
       const updatedData = await predictNextDividend(mappedData);
@@ -139,7 +133,7 @@ export function DividendTimeline({
         }));
 
       setDividendHistory(newDividendData);
-      onDividendsUpdate(newDividendData);
+      onDividendsUpdate(newDividendData as DividendData[]);
     } catch (error) {
       console.error("Failed to predict next dividend:", error);
     } finally {
@@ -157,7 +151,7 @@ export function DividendTimeline({
       <Sidebar
         side="right"
         className={cn(
-          "bg-background border-l [--sidebar-width:400px] flex flex-col h-full",
+          "bg-background border-l [--sidebar-width:300px] flex flex-col h-full",
           className
         )}
       >
@@ -178,7 +172,12 @@ export function DividendTimeline({
                     date={dividend.payDate}
                     amount={dividend.amount}
                     exDate={dividend.date}
-                    status={dividend.timeline || "confirmed"}
+                    status={
+                      dividend.timeline as
+                        | "confirmed"
+                        | "most recent"
+                        | "predicted"
+                    }
                     isFirst={index === 0}
                     isNew={dividend.timeline === "predicted"}
                   />

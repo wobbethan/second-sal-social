@@ -18,15 +18,32 @@ export async function predictNextDividend(
 
     // Prepare the prompt for OpenAI
     const prompt = `Given the following dividend history (from most recent):
-${sortedData.map((d) => `Date: ${d.date}, Amount: $${d.amount}`).join("\n")}
+${sortedData
+  .map((d) => `PayDate: ${d.payDate}, ExDate: ${d.date}, Amount: $${d.amount}`)
+  .join("\n")}
 
-Analyze this dividend history and predict the next dividend payment.
-Consider the payment frequency, dates, and amount trends.
+Analyze the dividend payment history focusing on:
+1. The quarterly/monthly pattern of PayDates (primary pattern)
+2. The fixed duration between PayDates (typically 90 days for quarterly)
+3. The exact number of days between each ExDate and its PayDate
+4. Recent trends in dividend amounts
+
+For the next dividend prediction:
+1. First determine the next PayDate by:
+   - Identifying the quarterly/monthly cycle
+   - Adding the fixed duration to the most recent PayDate
+   - Maintaining the same day-of-month pattern
+
+2. Then calculate the ExDate by:
+   - Measuring the exact number of days between PayDate and ExDate in recent history
+   - Subtracting that same number of days from the predicted PayDate
+   - No need to adjust for business days, maintain the exact gap
 
 Return ONLY a JSON object for the next predicted dividend in this format:
 {
-  "date": "YYYY-MM-DD",
-  "amount": XX.XX
+  "payDate": "YYYY-MM-DD",   // Next payment date based on quarterly cycle
+  "date": "YYYY-MM-DD",      // ExDate, using exact historical gap from PayDate
+  "amount": XX.XX            // Predicted amount based on recent trends
 }
 
 Do not include any explanatory text.`;
@@ -53,7 +70,7 @@ Do not include any explanatory text.`;
       symbol: sortedData[0].symbol,
       date: prediction.date,
       amount: prediction.amount,
-      payDate: prediction.date,
+      payDate: prediction.payDate,
       recordDate: prediction.date,
       currency: "USD",
       adjustedAmount: prediction.amount,

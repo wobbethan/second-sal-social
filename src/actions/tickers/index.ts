@@ -155,3 +155,41 @@ export async function getTickerData(
     return null;
   }
 }
+
+// Add this interface for the search response
+export interface TickerSearchResult {
+  description: string;
+  displaySymbol: string;
+  symbol: string;
+  type: string;
+  exchange?: string;
+}
+
+// Add the search function
+export async function searchTicker(
+  query: string
+): Promise<TickerSearchResult[]> {
+  try {
+    if (query.length < 2) return []; // Don't search for very short queries
+
+    const response = await finnhub.get(`/search`, {
+      params: {
+        q: query.toUpperCase(), // Convert to uppercase for better matches
+      },
+    });
+
+    // Filter and process results immediately
+    return response.data.result
+      .filter(
+        (item: TickerSearchResult) =>
+          item.type === "Common Stock" &&
+          !item.symbol.includes(".") &&
+          (item.symbol.startsWith(query.toUpperCase()) ||
+            item.description.toUpperCase().includes(query.toUpperCase()))
+      )
+      .slice(0, 8); // Limit to top 8 results for better performance
+  } catch (error) {
+    console.error("Error searching tickers:", error);
+    return [];
+  }
+}

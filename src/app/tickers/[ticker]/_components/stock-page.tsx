@@ -47,10 +47,10 @@ export default function StockPage({
   const [chatOpen, setChatOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-muted">
+    <div className="flex h-screen bg-muted w-full">
       {/* Main Content Area */}
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-[1200px] mx-auto px-8 py-6 space-y-6">
+      <div className="flex-1 overflow-auto w-full">
+        <div className="w-full mx-auto px-8 py-6 space-y-6">
           {/* Company Header */}
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
@@ -91,7 +91,7 @@ export default function StockPage({
           </div>
 
           {/* Stock Performance Card */}
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle>Stock Performance</CardTitle>
             </CardHeader>
@@ -125,7 +125,7 @@ export default function StockPage({
                 </ResponsiveContainer>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* Company Overview */}
           <CompanyOverview {...companyProfile} />
