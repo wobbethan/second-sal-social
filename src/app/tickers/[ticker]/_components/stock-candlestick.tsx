@@ -1,11 +1,8 @@
 "use client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CandleData } from "@/types/finnhub";
-import dynamic from "next/dynamic";
 import { ApexOptions } from "apexcharts";
-
-// Dynamically import ApexCharts to avoid SSR issues
-const Chart = dynamic<any>(() => import("react-apexcharts"), { ssr: false });
+import Chart from "react-apexcharts";
 
 interface StockCandlestickProps {
   candles: CandleData;
@@ -29,7 +26,7 @@ export default function StockCandlestick({ candles }: StockCandlestickProps) {
       height: 400,
       background: "transparent",
       animations: {
-        enabled: false,
+        enabled: true,
       },
     },
     title: {

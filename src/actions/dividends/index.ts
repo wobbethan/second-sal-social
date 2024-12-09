@@ -2,6 +2,7 @@
 
 import OpenAI from "openai";
 import { DividendData } from "@/types/finnhub";
+import { calculateDividendTrend } from "@/utils/dividend-prediction";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -122,8 +123,14 @@ export async function analyzeDividends(
 ) {
   try {
     // If the question is about future dividends, use predictNextDividend
-    const futureDividendKeywords = ['next dividend', 'future dividend', 'upcoming dividend', 'predict', 'when will'];
-    const isAskingAboutFuture = futureDividendKeywords.some(keyword => 
+    const futureDividendKeywords = [
+      "next dividend",
+      "future dividend",
+      "upcoming dividend",
+      "predict",
+      "when will",
+    ];
+    const isAskingAboutFuture = futureDividendKeywords.some((keyword) =>
       question.toLowerCase().includes(keyword)
     );
 
@@ -133,22 +140,32 @@ export async function analyzeDividends(
 
       return {
         analysis: `The next dividend is predicted to be $${nextDividend.amount} with an ex-dividend date of ${nextDividend.date} and payment date of ${nextDividend.payDate}.`,
-        predictions: predictions
+        predictions: predictions,
       };
     }
 
     // For other questions, use the existing OpenAI analysis
-    const systemPrompt = `You are a dividend analysis expert. You have access to historical dividend data for ${ticker}. 
-    When predictions are needed, use the historical pattern to predict future dividends.
-    If calculations involve share quantities or investment amounts, show your work clearly.
-    Current stock price: $${currentPrice}
-    
-    Rules:
-    1. If asked about future dividends, analyze the pattern and make predictions
-    2. For investment calculations, use the most recent dividend amount as reference
-    3. Always explain your reasoning
-    4. If predictions are made, format them as JSON within your response
-    5. Keep responses concise but informative`;
+    const systemPrompt = `You are a dividend analysis expert. Keep responses brief and focused.
+
+When analyzing or predicting:
+1. Limit explanations to 4-5 short sentences
+2. For predictions, include dates and amounts in a clear format
+3. Focus on key information:
+   - Payment dates
+   - Amount changes
+   - Notable patterns
+4. Format predictions as:
+   {
+     "payDate": "YYYY-MM-DD",
+     "date": "YYYY-MM-DD",
+     "amount": XX.XX,
+     "symbol": "${ticker}",
+     "recordDate": "YYYY-MM-DD",
+     "currency": "USD",
+     "adjustedAmount": XX.XX
+   }
+
+Current stock price: $${currentPrice}`;
 
     const formattedDividends = dividendHistory.map((d) => ({
       date: d.payDate,
@@ -212,5 +229,49 @@ export async function analyzeDividends(
   } catch (error) {
     console.error("Error analyzing dividends:", error);
     throw error;
+  }
+}
+
+export async function getDividendData(symbol: string) {
+  try {
+    const response = await finnhubClient.stockDividends(symbol);
+
+    if (!response || response.length === 0) {
+      return {
+        dividends: [],
+        prediction: null,
+      };
+    }
+
+    // Format historical dividends for prediction
+    const dividendHistory = response.map((dividend) => ({
+      date: dividend.date,
+      amount: dividend.amount,
+    }));
+
+    // Calculate dividend trend and prediction
+    const { prediction, trend, confidence } =
+      calculateDividendTrend(dividendHistory);
+
+    // Format the response
+    const formattedDividends = response.map((dividend) => ({
+      ...dividend,
+      date: new Date(dividend.date).toISOString(),
+    }));
+
+    return {
+      dividends: formattedDividends,
+      prediction: {
+        amount: prediction,
+        trend,
+        confidence,
+        message: `Next dividend predicted to be $${prediction} (${(
+          confidence * 100
+        ).toFixed(1)}% confidence)`,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching dividend data:", error);
+    throw new Error("Failed to fetch dividend data");
   }
 }

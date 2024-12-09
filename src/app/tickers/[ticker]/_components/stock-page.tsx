@@ -31,67 +31,85 @@ export default function StockPage({
 
   return (
     <div className="flex-1 min-h-0 overflow-hidden w-full">
-      {/* Search Bar - Outside ScrollArea */}
-      <div className="px-8 pt-6">
-        <SearchBar className="w-full max-w-xl mx-auto" />
-      </div>
-
-      {/* Scrollable Content */}
-      <ScrollArea className="h-[calc(100vh-5rem)]">
-        <div className="px-8 py-6 space-y-6 max-w-[1200px] mx-auto">
-          {/* Company Header */}
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <Avatar className="h-8 w-8">
-                <AvatarImage
-                  src={companyProfile.logo}
-                  alt={companyProfile.name}
-                />
-                <AvatarFallback>{ticker.slice(0, 2)}</AvatarFallback>
-              </Avatar>
-              <a
-                href={companyProfile.weburl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-blue-600 hover:underline"
-              >
-                <h1 className="text-3xl font-bold flex items-center gap-2">
-                  {companyProfile.name} ({ticker})
-                </h1>
-              </a>
-              <span className="text-lg text-muted-foreground font-normal">
-                {companyProfile.exchange}
-              </span>
-            </div>
-            <div className="flex items-center">
-              <span className="text-2xl font-semibold">
-                ${currentPrice.toFixed(2)}
-              </span>
-              <span
-                className={`ml-2 ${
-                  priceChange >= 0 ? "text-green-500" : "text-red-500"
-                }`}
-              >
-                {priceChange >= 0 ? "+" : ""}
-                {priceChange.toFixed(2)} ({priceChangePercent.toFixed(2)}%)
-              </span>
-            </div>
-          </div>
-
-          {/* Candle Chart */}
-          <StockCandlestick candles={candles} />
-
-          {/* Company Overview */}
-          <CompanyOverview {...companyProfile} />
-
-          {/* Company News */}
-          <CompanyNews
-            newsItems={newsItems}
-            companyLogo={companyProfile.logo}
-            companyName={companyProfile.name}
-          />
+      {/* Container for consistent width */}
+      <div className="mx-auto w-full px-4">
+        {/* Search Bar */}
+        <div className="pt-4">
+          <SearchBar className="w-full px-4" />
         </div>
-      </ScrollArea>
+
+        {/* Scrollable Content */}
+        <ScrollArea className="h-[calc(100vh-7rem)] px-6">
+          <div className="py-6 space-y-6">
+            {/* Company Header */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage
+                    src={companyProfile.logo}
+                    alt={companyProfile.name}
+                  />
+                  <AvatarFallback>{ticker.slice(0, 2)}</AvatarFallback>
+                </Avatar>
+                <a
+                  href={companyProfile.weburl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-blue-600 hover:underline"
+                >
+                  <h1 className="text-3xl font-bold flex items-center gap-2">
+                    {companyProfile.name} ({ticker})
+                  </h1>
+                </a>
+                <span className="text-lg text-muted-foreground font-normal">
+                  {companyProfile.exchange}
+                </span>
+              </div>
+              <div className="flex items-center">
+                <span className="text-2xl font-semibold">
+                  ${currentPrice.toFixed(2)}
+                </span>
+                <span
+                  className={`ml-2 ${
+                    priceChange >= 0 ? "text-green-500" : "text-red-500"
+                  }`}
+                >
+                  {priceChange >= 0 ? "+" : ""}
+                  {priceChange.toFixed(2)} ({priceChangePercent.toFixed(2)}%)
+                </span>
+              </div>
+            </div>
+
+            {/* Candle Chart */}
+            <StockCandlestick candles={candles} />
+
+            {/* Company Overview */}
+            <CompanyOverview {...companyProfile} />
+
+            {/* Company News */}
+            <CompanyNews
+              newsItems={newsItems}
+              companyLogo={companyProfile.logo}
+              companyName={companyProfile.name}
+            />
+          </div>
+        </ScrollArea>
+
+        {/* Footer */}
+        <footer className="h-12 flex items-center justify-between text-sm text-muted-foreground border-t">
+          <div>
+            © {new Date().getFullYear()} Second Salary. All rights reserved.
+          </div>
+          <div className="flex gap-4">
+            <a href="/privacy" className="hover:text-foreground">
+              Privacy Policy
+            </a>
+            <a href="/terms" className="hover:text-foreground">
+              Terms of Service
+            </a>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }
