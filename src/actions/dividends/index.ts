@@ -244,7 +244,7 @@ export async function getDividendData(symbol: string) {
     }
 
     // Format historical dividends for prediction
-    const dividendHistory = response.map((dividend) => ({
+    const dividendHistory = response.map((dividend: DividendData) => ({
       date: dividend.date,
       amount: dividend.amount,
     }));
@@ -254,7 +254,7 @@ export async function getDividendData(symbol: string) {
       calculateDividendTrend(dividendHistory);
 
     // Format the response
-    const formattedDividends = response.map((dividend) => ({
+    const formattedDividends = response.map((dividend: DividendData) => ({
       ...dividend,
       date: new Date(dividend.date).toISOString(),
     }));

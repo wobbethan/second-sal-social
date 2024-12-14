@@ -19,7 +19,7 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { redirect, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, useRef } from "react";
 
 const stockData = [
@@ -120,7 +120,7 @@ export function SearchBar({ className }: SearchBarProps) {
     searchTimeoutRef.current = setTimeout(async () => {
       try {
         const searchResults = await searchTicker(value);
-        setResults(searchResults);
+        // setResults(searchResults);
       } catch (error) {
         console.error("Search failed:", error);
         setResults([]);
@@ -227,9 +227,7 @@ export function SearchBar({ className }: SearchBarProps) {
               >
                 <div className="flex justify-between items-center">
                   <div>
-                    <div className="font-medium">
-                      {result.description} ({result.symbol})
-                    </div>
+                    <div className="font-medium">({result.symbol})</div>
                   </div>
                   <div className="text-sm text-muted-foreground">
                     {result.type}

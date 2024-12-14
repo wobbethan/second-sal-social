@@ -26,3 +26,15 @@ export async function searchTicker(query: string): Promise<SearchResult[]> {
     return [];
   }
 }
+
+export async function getStockPrice(symbol: string): Promise<number> {
+  // In a real implementation, this would call your stock price API
+  // For demo purposes, we'll return mock prices
+  const mockPrices: Record<string, number> = {
+    "AAPL": 247.96,
+    "FMNB": 15.47,
+    "TSCO": 285.27,
+  };
+
+  return mockPrices[symbol] || 0;
+}
