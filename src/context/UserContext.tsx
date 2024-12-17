@@ -1,5 +1,5 @@
 "use client";
-import { onAuthenticatedUser } from "@/actions/auth/auth";
+import { onAuthenticatedUser } from "@/actions/user";
 import { User } from "@/types/auth";
 import { createContext, useContext, useEffect, useState } from "react";
 

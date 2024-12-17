@@ -6,8 +6,6 @@ interface LayoutProps {
 
 export default function AuthLayout({ children }: LayoutProps) {
   return (
-    <div className="flex w-full items-center justify-center h-screen">
-      {children}
-    </div>
+    <div className="flex w-full items-center justify-center">{children}</div>
   );
 }

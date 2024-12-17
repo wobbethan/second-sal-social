@@ -14,10 +14,15 @@ const config: Config = {
           "0%": { opacity: "0", transform: "translateY(-10px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        "sliding-highlight": {
+          "0%": { backgroundPosition: "200% 0" },
+          "100%": { backgroundPosition: "-200% 0" },
+        },
       },
       animation: {
         "draw-line": "draw-line 0.5s ease-out forwards",
         "fade-in": "fade-in 0.5s ease-out forwards",
+        "sliding-highlight": "sliding-highlight 5s linear infinite",
       },
       colors: {
         background: "hsl(var(--background))",

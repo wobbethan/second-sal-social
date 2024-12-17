@@ -24,19 +24,48 @@ enum Country {
 }
 
 model User {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  firstname    String
-  lastname     String
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  clerkId      String    @unique
-  image        String?
-  stripeId     String?
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkId   String  @unique
+  firstName String
+  lastName  String
+  username  String
+  image     String?
+
+  stripeId String?
+
   bundles      Bundle[] // Created bundles
-  savedBundles Bundle[]  @relation("SavedBundles")
+  savedBundles Bundle[]     @relation("SavedBundles")
   posts        Post[] // Changed from Post to posts
   likes        Like[] // Changed from Like to likes
   comments     Comment[] // Changed from Comment to comments
+  preferences  Preferences?
+  settings     Settings?
+
+  onboarded Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Add this to ensure preferences and settings are created with user
+}
+
+model Preferences {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bio         String?
+  phone       String?
+  country     Country
+  dateOfBirth DateTime?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String    @unique @db.Uuid
+}
+
+model Settings {
+  id                   String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  theme                String  @default("light")
+  language             String  @default("en")
+  notificationsEnabled Boolean @default(true)
+  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId               String  @unique @db.Uuid
 }
 
 model Bundle {

@@ -14,5 +14,7 @@ export interface Bundle {
     shares: number;
   }[];
   targetMonthly: number;
-  country: "USA" | "Canada";
+  country: "US" | "CA";
+  mic: "NYSE" | "TSX";
+  currency: "USD" | "CAD";
 }

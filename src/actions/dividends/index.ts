@@ -232,46 +232,46 @@ Current stock price: $${currentPrice}`;
   }
 }
 
-export async function getDividendData(symbol: string) {
+// Add this new function to calculate dividend yield
+export async function calculateDividendYield(symbol: string): Promise<number> {
   try {
-    const response = await finnhubClient.stockDividends(symbol);
-
-    if (!response || response.length === 0) {
-      return {
-        dividends: [],
-        prediction: null,
-      };
+    const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
+    if (!FINNHUB_API_KEY) {
+      throw new Error("Finnhub API key is not configured");
     }
 
-    // Format historical dividends for prediction
-    const dividendHistory = response.map((dividend: DividendData) => ({
-      date: dividend.date,
-      amount: dividend.amount,
-    }));
+    // Get current stock price
+    const priceResponse = await fetch(
+      `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`
+    );
+    const priceData = await priceResponse.json();
+    const currentPrice = priceData.c; // Current price
 
-    // Calculate dividend trend and prediction
-    const { prediction, trend, confidence } =
-      calculateDividendTrend(dividendHistory);
+    // Get dividend history for the last year using regular dividends endpoint
+    const today = new Date();
+    const oneYearAgo = new Date(today.setFullYear(today.getFullYear() - 1));
 
-    // Format the response
-    const formattedDividends = response.map((dividend: DividendData) => ({
-      ...dividend,
-      date: new Date(dividend.date).toISOString(),
-    }));
+    // Format dates as YYYY-MM-DD
+    const fromDate = oneYearAgo.toISOString().split("T")[0];
+    const toDate = new Date().toISOString().split("T")[0];
 
-    return {
-      dividends: formattedDividends,
-      prediction: {
-        amount: prediction,
-        trend,
-        confidence,
-        message: `Next dividend predicted to be $${prediction} (${(
-          confidence * 100
-        ).toFixed(1)}% confidence)`,
-      },
-    };
+    const dividendResponse = await fetch(
+      `https://finnhub.io/api/v1/stock/dividend?symbol=${symbol}&from=${fromDate}&to=${toDate}&token=${FINNHUB_API_KEY}`
+    );
+    const dividendData = await dividendResponse.json();
+
+    // Calculate annual dividend
+    const annualDividend = dividendData.reduce(
+      (sum: number, div: { amount: number }) => sum + div.amount,
+      0
+    );
+
+    // Calculate yield (annualDividend / currentPrice * 100)
+    const dividendYield = (annualDividend / currentPrice) * 100;
+
+    return Number(dividendYield.toFixed(2));
   } catch (error) {
-    console.error("Error fetching dividend data:", error);
-    throw new Error("Failed to fetch dividend data");
+    console.error("Error calculating dividend yield:", error);
+    return 0;
   }
 }

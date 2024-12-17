@@ -2,8 +2,8 @@ import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface CountrySelectorProps {
-  selectedCountry: "USA" | "Canada";
-  onSelectCountry: (country: "USA" | "Canada") => void;
+  selectedCountry: "US" | "CA";
+  onSelectCountry: (country: "US" | "CA") => void;
 }
 
 export function CountrySelector({
@@ -14,39 +14,39 @@ export function CountrySelector({
     <div className="grid grid-cols-2 gap-4">
       <Card
         className={`cursor-pointer ${
-          selectedCountry === "USA" ? "border-green-500" : ""
+          selectedCountry === "US" ? "border-green-500" : ""
         }`}
-        onClick={() => onSelectCountry("USA")}
+        onClick={() => onSelectCountry("US")}
       >
         <CardContent className="flex items-center justify-center p-6">
           <div className="text-center">
             <Image
               src="/placeholder.svg?height=40&width=60"
-              alt="USA Flag"
+              alt="US Flag"
               width={60}
               height={40}
               className="mx-auto mb-2"
             />
-            <span className="font-medium">USA (NYSE)</span>
+            <span className="font-medium">US (NYSE)</span>
           </div>
         </CardContent>
       </Card>
       <Card
         className={`cursor-pointer ${
-          selectedCountry === "Canada" ? "border-green-500" : ""
+          selectedCountry === "CA" ? "border-green-500" : ""
         }`}
-        onClick={() => onSelectCountry("Canada")}
+        onClick={() => onSelectCountry("CA")}
       >
         <CardContent className="flex items-center justify-center p-6">
           <div className="text-center">
             <Image
               src="/placeholder.svg?height=40&width=60"
-              alt="Canada Flag"
+              alt="CA Flag"
               width={60}
               height={40}
               className="mx-auto mb-2"
             />
-            <span className="font-medium">Canada (TSX)</span>
+            <span className="font-medium">CA (TSX)</span>
           </div>
         </CardContent>
       </Card>

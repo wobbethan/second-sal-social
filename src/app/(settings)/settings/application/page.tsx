@@ -25,7 +25,7 @@ const exchanges = {
     { id: "nasdaq", name: "NASDAQ" },
     { id: "amex", name: "American Stock Exchange (AMEX)" },
   ],
-  canada: [
+  CA: [
     { id: "tsx", name: "Toronto Stock Exchange (TSX)" },
     { id: "tsxv", name: "TSX Venture Exchange (TSXV)" },
     { id: "cse", name: "Canadian Securities Exchange (CSE)" },
@@ -61,16 +61,12 @@ export default function ApplicationSettingsPage() {
                 </Label>
               </div>
               <div>
-                <RadioGroupItem
-                  value="canada"
-                  id="canada"
-                  className="peer sr-only"
-                />
+                <RadioGroupItem value="CA" id="CA" className="peer sr-only" />
                 <Label
-                  htmlFor="canada"
+                  htmlFor="CA"
                   className="flex flex-col items-center justify-between rounded-md border-2 border-gray-200 bg-white p-4 hover:bg-gray-50 peer-data-[state=checked]:border-blue-600 [&:has([data-state=checked])]:border-blue-600 cursor-pointer"
                 >
-                  <span>Canada</span>
+                  <span>CA</span>
                 </Label>
               </div>
             </RadioGroup>

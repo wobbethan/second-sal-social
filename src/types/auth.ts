@@ -5,7 +5,7 @@ export interface User {
   lastName: string | null;
   image: string;
   role: unknown;
-  country: "usa" | "canada";
+  country: "usa" | "CA";
   bio: string;
   preferredExchange: string;
 }

@@ -3,6 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { ConfirmDialog } from "./confirm-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Stock {
   symbol: string;
@@ -72,7 +78,19 @@ export function StocksTable({
                     />
                     {stock.symbol}
                     {stock.percent === 0 && (
-                      <AlertTriangle className="h-4 w-4 text-destructive" />
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <AlertTriangle className="h-4 w-4 text-destructive" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>
+                              Stock allocation cannot be 0%. Please allocate a
+                              percentage or remove the stock.
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     )}
                   </div>
                 </td>
@@ -88,7 +106,13 @@ export function StocksTable({
                     max="100"
                   />
                 </td>
-                <td className="text-right p-3 text-red-500">{stock.yield}%</td>
+                <td
+                  className={`text-right p-3 ${
+                    stock.yield < 0.01 ? "text-red-500" : ""
+                  }`}
+                >
+                  {stock.yield}%
+                </td>
                 <td className="text-right p-3">{stock.shares.toFixed(2)}</td>
                 <td className="text-right p-3">${stock.price.toFixed(2)}</td>
                 <td className="p-3">
@@ -97,7 +121,7 @@ export function StocksTable({
                     size="icon"
                     onClick={() => setStockToDelete(stock.symbol)}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4 text-red-500" />
                   </Button>
                 </td>
               </tr>

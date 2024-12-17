@@ -1,40 +1,56 @@
-import { SearchResult } from "@/types/search";
+// actions/tickers/search.ts
+"use server";
 
-export async function searchTicker(query: string): Promise<SearchResult[]> {
+let stocksCache: any = null;
+let lastFetchTime = 0;
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+export async function getAllStocks(exchange: string = "US") {
   try {
-    // Add AbortController to cancel pending requests
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+    // Return cached data if available and fresh
+    if (stocksCache && Date.now() - lastFetchTime < CACHE_DURATION) {
+      return stocksCache;
+    }
 
-    const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`, {
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
+    const response = await fetch(
+      `https://finnhub.io/api/v1/stock/symbol?exchange=${exchange}&token=${process.env.FINNHUB_API_KEY}`
+    );
 
     if (!response.ok) {
-      throw new Error("Search failed");
+      throw new Error("Failed to fetch stocks");
     }
 
-    return response.json();
+    const data = await response.json();
+
+    // Filter and transform the data
+    stocksCache = data
+      .filter(
+        (item: any) =>
+          item.type === "Common Stock" && item.displaySymbol && item.description
+      )
+      .map((item: any) => ({
+        symbol: item.displaySymbol,
+        description: item.description,
+        type: item.type,
+        currency: item.currency,
+      }));
+
+    lastFetchTime = Date.now();
+    return stocksCache;
   } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      console.log("Search request cancelled");
-    } else {
-      console.error("Search error:", error);
-    }
+    console.error("Failed to fetch stocks:", error);
     return [];
   }
 }
+export async function getStockPrice(symbol: string) {
+  const response = await fetch(
+    `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${process.env.FINNHUB_API_KEY}`
+  );
 
-export async function getStockPrice(symbol: string): Promise<number> {
-  // In a real implementation, this would call your stock price API
-  // For demo purposes, we'll return mock prices
-  const mockPrices: Record<string, number> = {
-    "AAPL": 247.96,
-    "FMNB": 15.47,
-    "TSCO": 285.27,
-  };
+  if (!response.ok) {
+    throw new Error("Failed to fetch stock price");
+  }
 
-  return mockPrices[symbol] || 0;
+  const data = await response.json();
+  return data.c;
 }

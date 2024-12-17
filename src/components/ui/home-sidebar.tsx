@@ -35,6 +35,7 @@ import { Button } from "./button";
 import { Card } from "./card";
 import { useClerk, UserButton } from "@clerk/nextjs";
 import { useUserContext } from "@/context/UserContext";
+import { useRouter } from "next/navigation";
 
 const followedAccounts = [
   { name: "Sarah Johnson", avatar: "/avatar-1.jpg", status: "Online" },
@@ -73,8 +74,7 @@ const initialNotifications = [
 
 export default function HomeSidebarComponent() {
   const user = useUserContext();
-  
-  if (!user) return null;
+  const router = useRouter();
 
   const { signOut } = useClerk();
   const [activeTab, setActiveTab] = useState("home");
@@ -243,7 +243,10 @@ export default function HomeSidebarComponent() {
       </SidebarContent>
       <SidebarFooter className="p-4 space-y-4">
         <div className="px-4 py-2">
-          <Button className="w-full bg-green-600 text-white hover:bg-green-700">
+          <Button
+            className="w-full bg-green-600 text-white hover:bg-green-700"
+            onClick={() => router.push("/create-bundle")}
+          >
             <Plus className="mr-2 h-4 w-4" /> Create Bundle
           </Button>
         </div>
@@ -251,31 +254,37 @@ export default function HomeSidebarComponent() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="w-full justify-start">
               <Avatar className="h-8 w-8 mr-2">
-                <AvatarImage src={user.image} alt={user.firstName || ""} />
+                <AvatarImage
+                  src={user?.image || ""}
+                  alt={user?.firstName || ""}
+                />
                 <AvatarFallback>
-                  {user.firstName?.[0]}
-                  {user.lastName?.[0]}
+                  {user?.firstName?.[0]}
+                  {user?.lastName?.[0]}
                 </AvatarFallback>
               </Avatar>
-              {user.firstName} {user.lastName}
+              {user?.firstName} {user?.lastName}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-row">
                 <Avatar className="h-8 w-8 mr-2">
-                  <AvatarImage src={user.image} alt={user.firstName || ""} />
+                  <AvatarImage
+                    src={user?.image || ""}
+                    alt={user?.firstName || ""}
+                  />
                   <AvatarFallback>
-                    {user.firstName?.[0]}
-                    {user.lastName?.[0]}
+                    {user?.firstName?.[0]}
+                    {user?.lastName?.[0]}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">
-                    {user.firstName} {user.lastName}
+                    {user?.firstName} {user?.lastName}
                   </p>
                   <p className="text-xs leading-none text-muted-foreground">
-                    {user.email}
+                    {user?.email}
                   </p>
                 </div>
               </div>
