@@ -201,6 +201,7 @@ export async function getBundleStockData(symbol: string): Promise<{
   price: number;
   dividendHistory: DividendData[];
   dividendYield: number;
+  industry: string;
 } | null> {
   try {
     symbol = symbol.toUpperCase();
@@ -215,17 +216,13 @@ export async function getBundleStockData(symbol: string): Promise<{
 
     const currentPrice = candleData.c[candleData.c.length - 1];
 
-    // Debug logging
-    console.log(`${symbol} - Current Price:`, currentPrice);
-    console.log(`${symbol} - Dividend History:`, dividendHistory);
-    console.log(`${symbol} - Dividend Yield:`, dividendYield);
-
     return {
       symbol,
       logo: companyProfile.logo || "/placeholder.svg",
       price: currentPrice,
       dividendHistory,
       dividendYield,
+      industry: companyProfile.finnhubIndustry || "Unknown",
     };
   } catch (error) {
     console.error("Error fetching bundle stock data:", error);

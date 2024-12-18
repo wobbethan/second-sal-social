@@ -28,6 +28,13 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { CountrySelector } from "./country-selector";
 import { StocksTable } from "./stocks-table";
+import PayoutCalendar from "./payout-calendar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Stock {
   symbol: string;
@@ -37,6 +44,8 @@ interface Stock {
   shares: number;
   price: number;
   dividendGrowth: number;
+  dividendHistory: DividendData[];
+  industry: string;
 }
 
 // Add form schema
@@ -191,6 +200,58 @@ export const getSecuritySharesForBundle = ({
 }) => {
   const price = mul(div(bundlePrice, totalPercent), securityPercentage);
   return round(div(price, securityPrice), -2);
+};
+
+const calculateBundleScore = (stocks: Stock[]): number => {
+  const totalWeight = 0.5 + 0.3 + 0.2;
+
+  // Calculate weighted average yield
+  const averageYield = calculateAverageValue(
+    stocks.map((s) => ({
+      value: Number(s.yield) || 0,
+      percentage: s.percent,
+    }))
+  );
+
+  // Calculate safety score based on dividend growth and history
+  const safetyScores = stocks.map((stock) => {
+    const hasConsistentDividends = stock.dividendHistory.length >= 4;
+    const hasPositiveGrowth = stock.dividendGrowth > 0;
+    const isEstablished = stock.price > 5;
+
+    // Score from 0-100 based on safety factors
+    let score = 0;
+    if (hasConsistentDividends) score += 40;
+    if (hasPositiveGrowth) score += 40;
+    if (isEstablished) score += 20;
+
+    return score;
+  });
+
+  const averageSafetyScore = calculateAverageValue(
+    stocks.map((s, i) => ({
+      value: safetyScores[i],
+      percentage: s.percent,
+    }))
+  );
+
+  // Use a simplified expense ratio since we don't have actual expense ratios
+  const averageExpenseRatio = calculateAverageValue(
+    stocks.map((s) => ({
+      value: 0.1, // Assume a standard expense ratio for now
+      percentage: s.percent,
+    }))
+  );
+
+  // Calculate final score (0-100 initially)
+  const score =
+    (averageYield * 0.5 +
+      averageSafetyScore * 0.3 -
+      averageExpenseRatio * 0.2) /
+    totalWeight;
+
+  // Convert 0-100 score to 0-10 scale and round to 2 decimal places
+  return Math.round(Math.min(Math.max(score / 10, 0), 10) * 100) / 100;
 };
 
 export default function BundleBuilder() {
@@ -453,6 +514,8 @@ export default function BundleBuilder() {
               shares,
               price: stockData.price,
               dividendGrowth: dividendGrowth,
+              dividendHistory: stockData.dividendHistory,
+              industry: stockData.industry,
             },
           ];
         } else if (remainingPercent > 0) {
@@ -473,6 +536,8 @@ export default function BundleBuilder() {
               shares,
               price: stockData.price,
               dividendGrowth: dividendGrowth,
+              dividendHistory: stockData.dividendHistory,
+              industry: stockData.industry,
             },
           ];
         } else {
@@ -505,6 +570,8 @@ export default function BundleBuilder() {
               shares,
               price: stockData.price,
               dividendGrowth: dividendGrowth,
+              dividendHistory: stockData.dividendHistory,
+              industry: stockData.industry,
             },
           ];
         }
@@ -531,6 +598,8 @@ export default function BundleBuilder() {
       }))
     );
   }, [totalCost]);
+
+  const bundleScore = stocks.length > 0 ? calculateBundleScore(stocks) : 0;
 
   return (
     <form
@@ -773,20 +842,72 @@ export default function BundleBuilder() {
                   <div className="text-xl font-bold">{averageGrowth}%</div>
                 </div>
                 <div className="p-4 bg-muted/50 rounded-lg">
-                  <div className="text-sm text-muted-foreground">Sectors</div>
-                  <div className="text-xl font-bold">{sectors}</div>
+                  {new Set(stocks.map((stock) => stock.industry)).size > 0 ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="cursor-help">
+                            <div className="text-sm text-muted-foreground">
+                              Sectors
+                            </div>
+                            <div className="text-xl font-bold">
+                              {
+                                new Set(stocks.map((stock) => stock.industry))
+                                  .size
+                              }
+                            </div>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent className="w-64">
+                          <div className="space-y-1">
+                            {stocks.map((stock) => (
+                              <div
+                                key={stock.symbol}
+                                className="flex justify-between text-sm"
+                              >
+                                <span>{stock.symbol}</span>
+                                <span className="text-muted-foreground">
+                                  {stock.industry}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : (
+                    <>
+                      <div className="text-sm text-muted-foreground">
+                        Sectors
+                      </div>
+                      <div className="text-xl font-bold">0</div>
+                    </>
+                  )}
                 </div>
                 <div className="p-4 bg-muted/50 rounded-lg">
                   <div className="text-sm text-muted-foreground">
                     Bundle score
                   </div>
-                  <div className="text-xl font-bold">—</div>
+                  <div className="text-xl font-bold">
+                    {bundleScore > 0 ? bundleScore.toFixed(2) : "—"}
+                  </div>
                 </div>
               </div>
             </div>
           </Card>
         </div>
       </div>
+      {stocks.length > 0 && (
+        <PayoutCalendar
+          stocks={stocks.map((stock) => ({
+            symbol: stock.symbol,
+            shares: stock.shares,
+            price: stock.price,
+            dividendHistory: stock.dividendHistory,
+            logo: stock.logo,
+          }))}
+        />
+      )}
     </form>
   );
 }

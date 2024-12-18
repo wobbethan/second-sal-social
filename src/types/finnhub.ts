@@ -38,12 +38,11 @@ export interface NewsItem {
 
 export interface DividendData {
   symbol: string;
-  date: string; // Ex-Dividend Date
-  amount: number; // Amount in local currency
-  payDate: string; // Payment Date
-  recordDate: string; // Record Date
-  currency: string; // Currency
-  adjustedAmount: number; // Dividend amount adjusted for splits
-  timeline?: "confirmed" | "most recent" | "predicted";
-  freq?: number;
+  date: string;
+  amount: number;
+  adjustedAmount: number;
+  payDate: string;
+  recordDate: string;
+  declarationDate: string;
+  currency: string;
 }
