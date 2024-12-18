@@ -16,25 +16,25 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { DividendData } from "@/types/finnhub";
-import { SearchResult } from "@/types/search";
-import { useUser } from "@clerk/nextjs";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { div, round, mul } from "exact-math";
-import { Search } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { CountrySelector } from "./country-selector";
-import { StocksTable } from "./stocks-table";
-import PayoutCalendar from "./payout-calendar";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { DividendData } from "@/types/finnhub";
+import { SearchResult } from "@/types/search";
+import { useUser } from "@clerk/nextjs";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { div, mul, round } from "exact-math";
+import { Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { CountrySelector } from "./country-selector";
+import PayoutCalendar from "./payout-calendar";
+import { StocksTable } from "./stocks-table";
 
 interface Stock {
   symbol: string;
@@ -57,6 +57,7 @@ const bundleSchema = z.object({
       z.object({
         symbol: z.string(),
         percent: z.number().min(0).max(100),
+        logo: z.string(),
       })
     )
     .refine((stocks) => {
@@ -125,7 +126,7 @@ const calculateWeightedAverage = (
 
 const calculateDividendGrowth = (dividendData: DividendData[]): number => {
   try {
-    if (!dividendData || dividendData.length < 4) return 0; // Need at least a year of data
+    if (!dividendData || dividendData.length < 4) return 0;
 
     // Sort dividends by date in descending order
     const sortedDividends = [...dividendData].sort(
@@ -139,8 +140,8 @@ const calculateDividendGrowth = (dividendData: DividendData[]): number => {
     if (recentYear.length < 4 || oldestYear.length < 4) return 0;
 
     // Calculate total dividends for each period
-    const recentTotal = recentYear.reduce((sum, div) => sum + div.dividend, 0);
-    const oldestTotal = oldestYear.reduce((sum, div) => sum + div.dividend, 0);
+    const recentTotal = recentYear.reduce((sum, div) => sum + div.amount, 0);
+    const oldestTotal = oldestYear.reduce((sum, div) => sum + div.amount, 0);
 
     if (oldestTotal <= 0 || recentTotal <= 0) return 0;
 
@@ -161,15 +162,6 @@ const calculateDividendGrowth = (dividendData: DividendData[]): number => {
     const roundedCagr = Math.round(cagr * 100) / 100;
 
     // Add debug logging
-    console.log(`Growth calculation for recent dividends:`, {
-      recentYear,
-      oldestYear,
-      recentTotal,
-      oldestTotal,
-      yearsDiff,
-      growthRate,
-      cagr: roundedCagr,
-    });
 
     if (
       isNaN(roundedCagr) ||
@@ -303,6 +295,7 @@ export default function BundleBuilder() {
         symbol: s.symbol,
         percent: s.percent,
         shares: s.shares,
+        logo: s.logo,
       }));
 
       formData.append("securities", JSON.stringify(securitiesData));
@@ -480,15 +473,7 @@ export default function BundleBuilder() {
         throw new Error("Failed to fetch stock data");
       }
 
-      console.log(
-        `Dividend history for ${stock.symbol}:`,
-        stockData.dividendHistory
-      );
       const dividendGrowth = calculateDividendGrowth(stockData.dividendHistory);
-      console.log(
-        `Calculated growth rate for ${stock.symbol}:`,
-        dividendGrowth
-      );
 
       setStocks((currentStocks) => {
         const totalPercent = currentStocks.reduce(
@@ -614,6 +599,7 @@ export default function BundleBuilder() {
           securities: stocks.map((s) => ({
             symbol: s.symbol,
             percent: s.percent,
+            logo: s.logo,
           })),
           country: selectedCountry,
         });
@@ -621,12 +607,6 @@ export default function BundleBuilder() {
       className="max-w-6xl mx-auto p-4 space-y-8 justify-center"
     >
       {/* Header */}
-      <div className="flex items-center space-x-4">
-        <Button variant="ghost" className="space-x-2">
-          <span>←</span>
-          <span>Back to overview</span>
-        </Button>
-      </div>
 
       <h1 className="text-2xl font-bold">Build a bundle</h1>
 

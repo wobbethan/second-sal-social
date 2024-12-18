@@ -73,15 +73,6 @@ export default function PayoutCalendar({ stocks }: PayoutCalendarProps) {
         }
       }
     });
-
-    // Add debug logging
-    console.log(`Dividend payouts for last 12 months:`, {
-      symbol: dividendHistory[0]?.symbol,
-      dividendHistory: recentDividends,
-      calculatedPayouts: payouts,
-      shares,
-    });
-
     return payouts;
   };
 
