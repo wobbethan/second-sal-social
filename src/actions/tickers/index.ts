@@ -8,6 +8,7 @@ import {
   DividendData,
 } from "@/types/finnhub";
 import { StockPageProps } from "@/types/props";
+import { calculateDividendYield } from "@/actions/dividends";
 
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
 
@@ -191,5 +192,43 @@ export async function searchTicker(
   } catch (error) {
     console.error("Error searching tickers:", error);
     return [];
+  }
+}
+
+export async function getBundleStockData(symbol: string): Promise<{
+  symbol: string;
+  logo: string;
+  price: number;
+  dividendHistory: DividendData[];
+  dividendYield: number;
+} | null> {
+  try {
+    symbol = symbol.toUpperCase();
+
+    const [companyProfile, dividendHistory, candleData, dividendYield] =
+      await Promise.all([
+        fetchCompanyProfile(symbol),
+        fetchDividendData(symbol),
+        fetchCandleData(symbol),
+        calculateDividendYield(symbol),
+      ]);
+
+    const currentPrice = candleData.c[candleData.c.length - 1];
+
+    // Debug logging
+    console.log(`${symbol} - Current Price:`, currentPrice);
+    console.log(`${symbol} - Dividend History:`, dividendHistory);
+    console.log(`${symbol} - Dividend Yield:`, dividendYield);
+
+    return {
+      symbol,
+      logo: companyProfile.logo || "/placeholder.svg",
+      price: currentPrice,
+      dividendHistory,
+      dividendYield,
+    };
+  } catch (error) {
+    console.error("Error fetching bundle stock data:", error);
+    return null;
   }
 }

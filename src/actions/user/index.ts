@@ -1,8 +1,59 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@clerk/nextjs/server";
 import { Country } from "@prisma/client";
+
+export async function getUserPreferences() {
+  try {
+    const clerk = await currentUser();
+    if (!clerk) {
+      return { success: false, error: "Not authenticated" };
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { clerkId: clerk.id },
+      include: { preferences: true },
+    });
+
+    if (!user) {
+      return { success: false, error: "User not found" };
+    }
+
+    return { success: true, preferences: user.preferences };
+  } catch (error) {
+    console.error("Error fetching user preferences:", error);
+    return { success: false, error: "Failed to fetch preferences" };
+  }
+}
+
+export async function updateUserPreferences({ country }: { country: Country }) {
+  try {
+    const clerk = await currentUser();
+    if (!clerk) {
+      return { success: false, error: "Not authenticated" };
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { clerkId: clerk.id },
+      include: { preferences: true },
+    });
+
+    if (!user) {
+      return { success: false, error: "User not found" };
+    }
+
+    const updatedPreferences = await prisma.preferences.update({
+      where: { userId: user.id },
+      data: { country },
+    });
+
+    return { success: true, preferences: updatedPreferences };
+  } catch (error) {
+    console.error("Error updating preferences:", error);
+    return { success: false, error: "Failed to update preferences" };
+  }
+}
 
 export const onAuthenticatedUser = async () => {
   try {

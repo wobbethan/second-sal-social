@@ -1,19 +1,27 @@
 // actions/tickers/search.ts
 "use server";
 
-let stocksCache: any = null;
-let lastFetchTime = 0;
-const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+let stocksCacheUS: any[] = [];
+let stocksCacheTO: any[] = [];
+let lastFetchTimeUS = 0;
+let lastFetchTimeTO = 0;
 
-export async function getAllStocks(exchange: string = "US") {
+export async function getAllStocks(exchange: string) {
   try {
-    // Return cached data if available and fresh
-    if (stocksCache && Date.now() - lastFetchTime < CACHE_DURATION) {
-      return stocksCache;
+    // Check appropriate cache based on country
+    const cache = exchange === "US" ? stocksCacheUS : stocksCacheTO;
+    const lastFetch = exchange === "US" ? lastFetchTimeUS : lastFetchTimeTO;
+
+    if (cache.length && Date.now() - lastFetch < CACHE_DURATION) {
+      return cache;
     }
 
+    // Use TO for Toronto Stock Exchange
+    const exchangeCode = exchange === "US" ? "US" : "TO";
+
     const response = await fetch(
-      `https://finnhub.io/api/v1/stock/symbol?exchange=${exchange}&token=${process.env.FINNHUB_API_KEY}`
+      `https://finnhub.io/api/v1/stock/symbol?exchange=${exchangeCode}&token=${process.env.FINNHUB_API_KEY}`
     );
 
     if (!response.ok) {
@@ -22,8 +30,7 @@ export async function getAllStocks(exchange: string = "US") {
 
     const data = await response.json();
 
-    // Filter and transform the data
-    stocksCache = data
+    const processedData = data
       .filter(
         (item: any) =>
           item.type === "Common Stock" && item.displaySymbol && item.description
@@ -35,8 +42,16 @@ export async function getAllStocks(exchange: string = "US") {
         currency: item.currency,
       }));
 
-    lastFetchTime = Date.now();
-    return stocksCache;
+    // Update appropriate cache
+    if (exchange === "US") {
+      stocksCacheUS = processedData;
+      lastFetchTimeUS = Date.now();
+    } else {
+      stocksCacheTO = processedData;
+      lastFetchTimeTO = Date.now();
+    }
+
+    return processedData;
   } catch (error) {
     console.error("Failed to fetch stocks:", error);
     return [];

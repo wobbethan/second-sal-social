@@ -54,8 +54,6 @@ export default function SignUpForm() {
         password: data.password,
       });
 
-      console.log("Sign up result:", result);
-
       // Store the form data in session storage for later use
       sessionStorage.setItem(
         "onboardingData",

@@ -74,7 +74,7 @@ model Bundle {
   creatorId  String   @db.Uuid
   savedBy    User[]   @relation("SavedBundles")
   name       String   @unique
-  securities String
+  securities Json
   currency   Currency
   country    Country  @default(US)
   createdAt  DateTime @default(now())

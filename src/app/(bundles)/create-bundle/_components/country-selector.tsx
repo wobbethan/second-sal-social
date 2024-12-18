@@ -1,55 +1,54 @@
-import Image from "next/image";
-import { Card, CardContent } from "@/components/ui/card";
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { updateUserPreferences } from "@/actions/user";
+import { useState } from "react";
 
 interface CountrySelectorProps {
   selectedCountry: "US" | "CA";
-  onSelectCountry: (country: "US" | "CA") => void;
+  onSelectCountry: (country: string, updatePreference: boolean) => void;
+  defaultCountry?: "US" | "CA";
 }
 
 export function CountrySelector({
   selectedCountry,
   onSelectCountry,
+  defaultCountry,
 }: CountrySelectorProps) {
+  const [updatePreference, setUpdatePreference] = useState(false);
+
+  const handleSelect = async (country: "US" | "CA") => {
+    onSelectCountry(country, updatePreference);
+  };
+
   return (
-    <div className="grid grid-cols-2 gap-4">
-      <Card
-        className={`cursor-pointer ${
-          selectedCountry === "US" ? "border-green-500" : ""
-        }`}
-        onClick={() => onSelectCountry("US")}
-      >
-        <CardContent className="flex items-center justify-center p-6">
-          <div className="text-center">
-            <Image
-              src="/placeholder.svg?height=40&width=60"
-              alt="US Flag"
-              width={60}
-              height={40}
-              className="mx-auto mb-2"
-            />
-            <span className="font-medium">US (NYSE)</span>
-          </div>
-        </CardContent>
-      </Card>
-      <Card
-        className={`cursor-pointer ${
-          selectedCountry === "CA" ? "border-green-500" : ""
-        }`}
-        onClick={() => onSelectCountry("CA")}
-      >
-        <CardContent className="flex items-center justify-center p-6">
-          <div className="text-center">
-            <Image
-              src="/placeholder.svg?height=40&width=60"
-              alt="CA Flag"
-              width={60}
-              height={40}
-              className="mx-auto mb-2"
-            />
-            <span className="font-medium">CA (TSX)</span>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <Button
+          variant={selectedCountry === "US" ? "default" : "outline"}
+          onClick={() => handleSelect("US")}
+        >
+          United States
+        </Button>
+        <Button
+          variant={selectedCountry === "CA" ? "default" : "outline"}
+          onClick={() => handleSelect("CA")}
+        >
+          Canada
+        </Button>
+      </div>
+      <div className="flex items-center space-x-2">
+        <input
+          type="checkbox"
+          id="updatePreference"
+          checked={updatePreference}
+          onChange={(e) => setUpdatePreference(e.target.checked)}
+          className="rounded border-gray-300"
+        />
+        <label htmlFor="updatePreference" className="text-sm">
+          Set as default country in profile preferences
+        </label>
+      </div>
     </div>
   );
 }

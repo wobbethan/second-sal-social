@@ -1,6 +1,9 @@
 "use client";
 
-import { getAllStocks, getStockPrice } from "@/actions/tickers/search";
+import { createBundle } from "@/actions/bundles";
+import { getBundleStockData } from "@/actions/tickers";
+import { getAllStocks } from "@/actions/tickers/search";
+import { getUserPreferences, updateUserPreferences } from "@/actions/user";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -13,13 +16,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { useUserContext } from "@/context/UserContext";
+import { DividendData } from "@/types/finnhub";
 import { SearchResult } from "@/types/search";
+import { useUser } from "@clerk/nextjs";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { div, round, mul } from "exact-math";
 import { Search } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { CountrySelector } from "./country-selector";
 import { StocksTable } from "./stocks-table";
-import { calculateDividendYield } from "@/actions/dividends";
 
 interface Stock {
   symbol: string;
@@ -28,7 +36,162 @@ interface Stock {
   yield: number;
   shares: number;
   price: number;
+  dividendGrowth: number;
 }
+
+// Add form schema
+const bundleSchema = z.object({
+  name: z.string().min(1, "Bundle name is required"),
+  country: z.enum(["US", "CA"]),
+  securities: z
+    .array(
+      z.object({
+        symbol: z.string(),
+        percent: z.number().min(0).max(100),
+      })
+    )
+    .refine((stocks) => {
+      const total = stocks.reduce((sum, stock) => sum + stock.percent, 0);
+      return total === 100;
+    }, "Stock allocations must total 100%"),
+});
+
+export const getBundlePriceForDesiredIncome = (
+  annualIncome: number,
+  averageDividendYield: number
+) => {
+  if (averageDividendYield === 0 || !annualIncome) {
+    return 0;
+  }
+  return round(div(annualIncome, div(averageDividendYield, 100)), -2);
+};
+
+type BundleFormData = z.infer<typeof bundleSchema>;
+
+const calculateAverageValue = (
+  securities: Array<{ value: number; percentage: number }>
+): number => {
+  if (securities.length === 0) return 0;
+
+  const weightedSum = securities.reduce(
+    (sum, sec) => sum + (sec.value * sec.percentage) / 100,
+    0
+  );
+
+  return Number(weightedSum.toFixed(2));
+};
+
+const calculateWeightedAverage = (
+  securities: Array<{ value: number; percentage: number }>
+): number => {
+  if (!securities || securities.length === 0) return 0;
+
+  try {
+    let validSum = 0;
+    let validPercentageTotal = 0;
+
+    securities.forEach((sec) => {
+      if (
+        typeof sec.value === "number" &&
+        typeof sec.percentage === "number" &&
+        !isNaN(sec.value) &&
+        !isNaN(sec.percentage) &&
+        sec.percentage > 0
+      ) {
+        validSum += (sec.value * sec.percentage) / 100;
+        validPercentageTotal += sec.percentage;
+      }
+    });
+
+    if (validPercentageTotal === 0) return 0;
+
+    // Normalize the result based on valid percentages
+    const result = (validSum * 100) / validPercentageTotal;
+    return Math.round(result * 100) / 100;
+  } catch (error) {
+    console.error("Error calculating weighted average:", error);
+    return 0;
+  }
+};
+
+const calculateDividendGrowth = (dividendData: DividendData[]): number => {
+  try {
+    if (!dividendData || dividendData.length < 4) return 0; // Need at least a year of data
+
+    // Sort dividends by date in descending order
+    const sortedDividends = [...dividendData].sort(
+      (a, b) => new Date(b.payDate).getTime() - new Date(a.payDate).getTime()
+    );
+
+    // Get the most recent 4 quarters and oldest 4 quarters
+    const recentYear = sortedDividends.slice(0, 4);
+    const oldestYear = sortedDividends.slice(-4);
+
+    if (recentYear.length < 4 || oldestYear.length < 4) return 0;
+
+    // Calculate total dividends for each period
+    const recentTotal = recentYear.reduce((sum, div) => sum + div.dividend, 0);
+    const oldestTotal = oldestYear.reduce((sum, div) => sum + div.dividend, 0);
+
+    if (oldestTotal <= 0 || recentTotal <= 0) return 0;
+
+    // Calculate years between periods
+    const yearsDiff =
+      (new Date(recentYear[0].payDate).getTime() -
+        new Date(oldestYear[oldestYear.length - 1].payDate).getTime()) /
+      (365 * 24 * 60 * 60 * 1000);
+
+    if (yearsDiff < 1) return 0;
+
+    // Calculate CAGR
+    const growthRate = recentTotal / oldestTotal;
+    const power = 1 / yearsDiff;
+    const cagr = (Math.pow(growthRate, power) - 1) * 100;
+
+    // Round to 2 decimal places
+    const roundedCagr = Math.round(cagr * 100) / 100;
+
+    // Add debug logging
+    console.log(`Growth calculation for recent dividends:`, {
+      recentYear,
+      oldestYear,
+      recentTotal,
+      oldestTotal,
+      yearsDiff,
+      growthRate,
+      cagr: roundedCagr,
+    });
+
+    if (
+      isNaN(roundedCagr) ||
+      !isFinite(roundedCagr) ||
+      roundedCagr < -100 ||
+      roundedCagr > 100
+    ) {
+      return 0;
+    }
+
+    return roundedCagr;
+  } catch (error) {
+    console.error("Error calculating dividend growth:", error);
+    return 0;
+  }
+};
+
+export const getSecuritySharesForBundle = ({
+  bundlePrice,
+  totalPercent,
+  securityPercentage,
+  securityPrice,
+}: {
+  bundlePrice: number;
+  totalPercent: number;
+  securityPercentage: number;
+  securityPrice: number;
+}) => {
+  const price = mul(div(bundlePrice, totalPercent), securityPercentage);
+  return round(div(price, securityPrice), -2);
+};
 
 export default function BundleBuilder() {
   const [selectedCountry, setSelectedCountry] = useState<"US" | "CA">("US");
@@ -40,13 +203,107 @@ export default function BundleBuilder() {
   const [allStocks, setAllStocks] = useState<SearchResult[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredResults, setFilteredResults] = useState<SearchResult[]>([]);
+  const { user } = useUser();
+  const [isPreferenceBased, setIsPreferenceBased] = useState(true);
 
-  const handleCountryChange = useCallback((country: string) => {
-    setSelectedCountry(country as "US" | "CA");
-    setStocks([]); // Clear stocks when country changes
-    setSearchQuery(""); // Clear search
-    setFilteredResults([]); // Clear results
-  }, []);
+  const router = useRouter();
+
+  const { handleSubmit, setValue } = useForm<BundleFormData>({
+    resolver: zodResolver(bundleSchema),
+    defaultValues: {
+      country: "US",
+      securities: [],
+    },
+  });
+
+  // Add form submission handler
+  const onSubmit = async (data: BundleFormData) => {
+    try {
+      // Validation checks
+      if (!bundleName.trim()) {
+        alert("Please enter a bundle name");
+        return;
+      }
+
+      if (totalPercent !== 100) {
+        alert("Total allocation must be 100%");
+        return;
+      }
+
+      if (hasZeroPercentStocks) {
+        alert("Please remove stocks with 0% allocation");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("name", bundleName);
+
+      const securitiesData = stocks.map((s) => ({
+        symbol: s.symbol,
+        percent: s.percent,
+        shares: s.shares,
+      }));
+
+      formData.append("securities", JSON.stringify(securitiesData));
+      formData.append("currency", selectedCountry === "US" ? "USD" : "CAD");
+      formData.append("country", selectedCountry);
+
+      const result = await createBundle(formData);
+
+      if (result.success) {
+        alert("Bundle created successfully!");
+      } else {
+        throw new Error(result.error || "Failed to create bundle");
+      }
+    } catch (error) {
+      console.error("Failed to create bundle:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to create bundle. Please try again."
+      );
+    }
+  };
+
+  const handleCountryChange = useCallback(
+    async (country: string, updatePreference: boolean) => {
+      setSelectedCountry(country as "US" | "CA");
+      setValue("country", country as "US" | "CA");
+      setStocks([]);
+      setSearchQuery("");
+      setFilteredResults([]);
+      setIsPreferenceBased(false);
+
+      if (updatePreference) {
+        try {
+          await updateUserPreferences({ country: country as "US" | "CA" });
+          setIsPreferenceBased(true);
+        } catch (error) {
+          console.error("Failed to update preferences:", error);
+          alert("Failed to update preferences");
+        }
+      }
+    },
+    [setValue]
+  );
+
+  // Get user's preferred country on mount
+  useEffect(() => {
+    const fetchUserCountry = async () => {
+      try {
+        const userPreferences = await getUserPreferences();
+        if (userPreferences.success && userPreferences.preferences?.country) {
+          setSelectedCountry(userPreferences.preferences.country);
+          setValue("country", userPreferences.preferences.country);
+          setIsPreferenceBased(true);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user preferences:", error);
+      }
+    };
+
+    fetchUserCountry();
+  }, [setValue]);
 
   // Fetch all stocks on component mount
   useEffect(() => {
@@ -72,27 +329,30 @@ export default function BundleBuilder() {
       const results = allStocks
         .filter(
           (stock) =>
-            (stock.description.toUpperCase().includes(value) ||
-              stock.symbol.includes(value)) &&
-            stock.currency === (selectedCountry === "US" ? "USD" : "CAD")
+            stock.description.toUpperCase().includes(value) ||
+            stock.symbol.includes(value)
         )
         .slice(0, 8);
 
       setFilteredResults(results);
     },
-    [allStocks, selectedCountry]
+    [allStocks]
   );
 
   const totalPercent = stocks.reduce((sum, stock) => sum + stock.percent, 0);
-  const totalCost = stocks.reduce(
-    (sum, stock) => sum + stock.shares * stock.price,
-    0
+  const averageYield = calculateAverageValue(
+    stocks.map((stock) => ({
+      value: Number(stock.yield) || 0,
+      percentage: Number(stock.percent) || 0,
+    }))
   );
-  const averageYield = stocks.reduce(
-    (sum, stock) => sum + stock.yield * (stock.percent / 100),
-    0
+  const totalCost = getBundlePriceForDesiredIncome(targetYearly, averageYield);
+  const averageGrowth = calculateWeightedAverage(
+    stocks.map((stock) => ({
+      value: stock.dividendGrowth,
+      percentage: stock.percent,
+    }))
   );
-  const averageGrowth = 11.9;
   const sectors = new Set(stocks.map((stock) => stock.symbol.slice(0, 2))).size;
 
   const handleRemoveStock = (symbol: string) => {
@@ -100,11 +360,25 @@ export default function BundleBuilder() {
   };
 
   const handleUpdatePercent = (symbol: string, percent: number) => {
-    setStocks(
-      stocks.map((stock) =>
-        stock.symbol === symbol ? { ...stock, percent } : stock
-      )
-    );
+    setStocks((currentStocks) => {
+      const updatedStocks = currentStocks.map((stock) => {
+        if (stock.symbol === symbol) {
+          // Update percentage
+          const updatedStock = { ...stock, percent };
+          // Recalculate shares
+          updatedStock.shares = getSecuritySharesForBundle({
+            bundlePrice: totalCost,
+            totalPercent: 100,
+            securityPercentage: percent,
+            securityPrice: stock.price,
+          });
+          return updatedStock;
+        }
+        return stock;
+      });
+
+      return updatedStocks;
+    });
   };
 
   const hasZeroPercentStocks = stocks.some((stock) => stock.percent === 0);
@@ -134,70 +408,149 @@ export default function BundleBuilder() {
 
   const handleAddStock = async (stock: SearchResult) => {
     if (stocks.some((s) => s.symbol === stock.symbol)) {
-      return; // Stock already exists in bundle
+      return;
     }
 
-    // Fetch the stock price and dividend yield
-    const [price, dividendYield] = await Promise.all([
-      getStockPrice(stock.symbol),
-      calculateDividendYield(stock.symbol),
-    ]);
+    try {
+      // Fetch stock data
+      const stockData = await getBundleStockData(stock.symbol);
 
-    setStocks((currentStocks) => {
-      const totalPercent = currentStocks.reduce((sum, s) => sum + s.percent, 0);
-      const remainingPercent = 100 - totalPercent;
-
-      if (currentStocks.length === 0) {
-        // First stock gets 100%
-        return [
-          {
-            symbol: stock.symbol,
-            logo: "/placeholder.svg?height=24&width=24",
-            percent: 100,
-            yield: dividendYield,
-            shares: 0,
-            price: price,
-          },
-        ];
-      } else if (remainingPercent > 0) {
-        // If there's remaining percentage, use that
-        return [
-          ...currentStocks,
-          {
-            symbol: stock.symbol,
-            logo: "/placeholder.svg?height=24&width=24",
-            percent: remainingPercent,
-            yield: dividendYield,
-            shares: 0,
-            price: price,
-          },
-        ];
-      } else {
-        // If at 100%, split the last stock's percentage
-        const lastStock = currentStocks[currentStocks.length - 1];
-        const splitPercent = lastStock.percent / 2;
-
-        return [
-          ...currentStocks.slice(0, -1),
-          { ...lastStock, percent: splitPercent },
-          {
-            symbol: stock.symbol,
-            logo: "/placeholder.svg?height=24&width=24",
-            percent: splitPercent,
-            yield: dividendYield,
-            shares: 0,
-            price: price,
-          },
-        ];
+      if (!stockData) {
+        throw new Error("Failed to fetch stock data");
       }
-    });
 
-    setSearchQuery("");
-    setFilteredResults([]);
+      console.log(
+        `Dividend history for ${stock.symbol}:`,
+        stockData.dividendHistory
+      );
+      const dividendGrowth = calculateDividendGrowth(stockData.dividendHistory);
+      console.log(
+        `Calculated growth rate for ${stock.symbol}:`,
+        dividendGrowth
+      );
+
+      setStocks((currentStocks) => {
+        const totalPercent = currentStocks.reduce(
+          (sum, s) => sum + s.percent,
+          0
+        );
+        const remainingPercent = 100 - totalPercent;
+
+        if (currentStocks.length === 0) {
+          const shares = getSecuritySharesForBundle({
+            bundlePrice: totalCost,
+            totalPercent: 100,
+            securityPercentage: 100,
+            securityPrice: stockData.price,
+          });
+
+          return [
+            {
+              symbol: stockData.symbol,
+              logo: stockData.logo,
+              percent: 100,
+              yield: stockData.dividendYield,
+              shares,
+              price: stockData.price,
+              dividendGrowth: dividendGrowth,
+            },
+          ];
+        } else if (remainingPercent > 0) {
+          const shares = getSecuritySharesForBundle({
+            bundlePrice: totalCost,
+            totalPercent: 100,
+            securityPercentage: remainingPercent,
+            securityPrice: stockData.price,
+          });
+
+          return [
+            ...currentStocks,
+            {
+              symbol: stockData.symbol,
+              logo: stockData.logo,
+              percent: remainingPercent,
+              yield: stockData.dividendYield,
+              shares,
+              price: stockData.price,
+              dividendGrowth: dividendGrowth,
+            },
+          ];
+        } else {
+          const lastStock = currentStocks[currentStocks.length - 1];
+          const splitPercent = lastStock.percent / 2;
+
+          // Calculate shares for both split stocks
+          const shares = getSecuritySharesForBundle({
+            bundlePrice: totalCost,
+            totalPercent: 100,
+            securityPercentage: splitPercent,
+            securityPrice: stockData.price,
+          });
+
+          const lastStockShares = getSecuritySharesForBundle({
+            bundlePrice: totalCost,
+            totalPercent: 100,
+            securityPercentage: splitPercent,
+            securityPrice: lastStock.price,
+          });
+
+          return [
+            ...currentStocks.slice(0, -1),
+            { ...lastStock, percent: splitPercent, shares: lastStockShares },
+            {
+              symbol: stockData.symbol,
+              logo: stockData.logo,
+              percent: splitPercent,
+              yield: stockData.dividendYield,
+              shares,
+              price: stockData.price,
+              dividendGrowth: dividendGrowth,
+            },
+          ];
+        }
+      });
+
+      setSearchQuery("");
+      setFilteredResults([]);
+    } catch (error) {
+      console.error("Error adding stock:", error);
+      alert("Failed to add stock. Please try again.");
+    }
   };
 
+  useEffect(() => {
+    setStocks((currentStocks) =>
+      currentStocks.map((stock) => ({
+        ...stock,
+        shares: getSecuritySharesForBundle({
+          bundlePrice: totalCost,
+          totalPercent: 100,
+          securityPercentage: stock.percent,
+          securityPrice: stock.price,
+        }),
+      }))
+    );
+  }, [totalCost]);
+
   return (
-    <div className="max-w-6xl mx-auto p-4 space-y-8 justify-center">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!bundleName.trim()) {
+          alert("Please enter a bundle name");
+          return;
+        }
+        onSubmit({
+          name: bundleName,
+          securities: stocks.map((s) => ({
+            symbol: s.symbol,
+            percent: s.percent,
+          })),
+          country: selectedCountry,
+        });
+      }}
+      className="max-w-6xl mx-auto p-4 space-y-8 justify-center"
+    >
       {/* Header */}
       <div className="flex items-center space-x-4">
         <Button variant="ghost" className="space-x-2">
@@ -256,10 +609,14 @@ export default function BundleBuilder() {
           {/* Country Selection */}
           <div className="flex items-center space-x-2">
             <Label className="text-sm">
-              Country and Exchange:{" "}
-              {selectedCountry === "US" ? "USA (NYSE)" : "CA (TSX)"}
+              Country:
+              {selectedCountry === "US" ? " United States" : " Canada"}
               <span className="text-muted-foreground ml-1">
-                (based on profile preferences)
+                (
+                {isPreferenceBased
+                  ? "based on profile preferences"
+                  : "one-time selection"}
+                )
               </span>
             </Label>
             <Dialog>
@@ -275,6 +632,7 @@ export default function BundleBuilder() {
                 <CountrySelector
                   selectedCountry={selectedCountry}
                   onSelectCountry={handleCountryChange}
+                  defaultCountry={selectedCountry}
                 />
               </DialogContent>
             </Dialog>
@@ -307,6 +665,7 @@ export default function BundleBuilder() {
                     filteredResults.map((result) => (
                       <button
                         key={result.symbol}
+                        type="button"
                         className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
                         onClick={() => handleAddStock(result)}
                       >
@@ -363,6 +722,7 @@ export default function BundleBuilder() {
           </div>
 
           <Button
+            type="submit"
             className="w-full"
             variant="default"
             disabled={
@@ -389,7 +749,11 @@ export default function BundleBuilder() {
                   Cost to get ${targetMonthly.toFixed(2)} monthly
                 </div>
                 <div className="text-2xl font-bold">
-                  ${totalCost.toFixed(2)}
+                  $
+                  {totalCost.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </div>
               </div>
 
@@ -423,6 +787,6 @@ export default function BundleBuilder() {
           </Card>
         </div>
       </div>
-    </div>
+    </form>
   );
 }

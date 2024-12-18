@@ -1,4 +1,4 @@
-import { Trash2, AlertTriangle } from "lucide-react";
+import { Trash2, AlertTriangle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
@@ -106,20 +106,19 @@ export function StocksTable({
                     max="100"
                   />
                 </td>
-                <td
-                  className={`text-right p-3 ${
-                    stock.yield < 0.01 ? "text-red-500" : ""
-                  }`}
-                >
-                  {stock.yield}%
+                <td className="px-4 py-2 text-right">
+                  {typeof stock.yield === "number" && !isNaN(stock.yield)
+                    ? `${stock.yield.toFixed(2)}%`
+                    : "0.00%"}
                 </td>
                 <td className="text-right p-3">{stock.shares.toFixed(2)}</td>
                 <td className="text-right p-3">${stock.price.toFixed(2)}</td>
                 <td className="p-3">
                   <Button
+                    type="button"
                     variant="ghost"
-                    size="icon"
-                    onClick={() => setStockToDelete(stock.symbol)}
+                    size="sm"
+                    onClick={() => onRemoveStock(stock.symbol)}
                   >
                     <Trash2 className="h-4 w-4 text-red-500" />
                   </Button>
