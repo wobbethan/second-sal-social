@@ -4,7 +4,6 @@ import BundleBuilder from "./_components/bundle-builder";
 const Page = () => {
   return (
     <div className="flex flex-col w-full">
-
       <BundleBuilder />
     </div>
   );

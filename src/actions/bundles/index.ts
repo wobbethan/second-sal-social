@@ -97,3 +97,41 @@ export async function getUserBundles() {
     return { success: false, error: "Failed to fetch bundles" };
   }
 }
+
+export async function getBundle(bundleId: string) {
+  try {
+    const clerk = await currentUser();
+    if (!clerk) {
+      return { success: false, error: "Not authenticated" };
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { clerkId: clerk.id },
+    });
+
+    if (!user) {
+      return { success: false, error: "User not found" };
+    }
+
+    const bundle = await prisma.bundle.findUnique({
+      where: { id: bundleId },
+      include: {
+        creator: {
+          select: {
+            username: true,
+          image: true,
+          },
+        },
+      },
+    });
+
+    if (!bundle) {
+      return { success: false, error: "Bundle not found" };
+    }
+
+    return { success: true, bundle };
+  } catch (error) {
+    console.error("Error fetching bundle:", error);
+    return { success: false, error: "Failed to fetch bundle" };
+  }
+}

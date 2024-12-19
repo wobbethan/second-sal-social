@@ -1,4 +1,4 @@
-import { Trash2, AlertTriangle, X } from "lucide-react";
+import { Trash2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
@@ -23,27 +23,16 @@ interface StocksTableProps {
   stocks: Stock[];
   onRemoveStock: (symbol: string) => void;
   onUpdatePercent: (symbol: string, percent: number) => void;
+  readOnly?: boolean;
 }
 
 export function StocksTable({
   stocks,
   onRemoveStock,
   onUpdatePercent,
+  readOnly,
 }: StocksTableProps) {
   const [stockToDelete, setStockToDelete] = useState<string | null>(null);
-
-  const handlePercentChange = (symbol: string, value: string) => {
-    const newPercent = parseFloat(value);
-    if (!isNaN(newPercent) && newPercent >= 0 && newPercent <= 100) {
-      const currentTotal = stocks.reduce(
-        (sum, s) => sum + (s.symbol === symbol ? 0 : s.percent),
-        0
-      );
-      if (currentTotal + newPercent <= 100) {
-        onUpdatePercent(symbol, newPercent);
-      }
-    }
-  };
 
   const handleConfirmDelete = () => {
     if (stockToDelete) {
@@ -95,16 +84,24 @@ export function StocksTable({
                   </div>
                 </td>
                 <td className="p-3 flex items-center justify-end gap-2">
-                  <Input
-                    type="number"
-                    value={stock.percent}
-                    onChange={(e) =>
-                      handlePercentChange(stock.symbol, e.target.value)
-                    }
-                    className="w-20 text-right"
-                    min="0"
-                    max="100"
-                  />
+                  {readOnly ? (
+                    <span>{stock.percent.toFixed(2)}%</span>
+                  ) : (
+                    <Input
+                      type="number"
+                      value={stock.percent}
+                      onChange={(e) =>
+                        onUpdatePercent(
+                          stock.symbol,
+                          parseFloat(e.target.value)
+                        )
+                      }
+                      className="w-20 text-right"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                    />
+                  )}
                 </td>
                 <td className="px-4 py-2 text-right">
                   {typeof stock.yield === "number" && !isNaN(stock.yield)
@@ -113,16 +110,18 @@ export function StocksTable({
                 </td>
                 <td className="text-right p-3">{stock.shares.toFixed(2)}</td>
                 <td className="text-right p-3">${stock.price.toFixed(2)}</td>
-                <td className="p-3">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onRemoveStock(stock.symbol)}
-                  >
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </Button>
-                </td>
+                {!readOnly && (
+                  <td className="p-3">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onRemoveStock(stock.symbol)}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
