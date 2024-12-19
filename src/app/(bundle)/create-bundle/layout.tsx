@@ -7,5 +7,7 @@ export default function BundleLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <div className="min-h-screen overflow-y-auto pb-8">{children}</div>;
+  return (
+    <div className="min-h-screen overflow-y-auto pb-8 w-full">{children}</div>
+  );
 }

@@ -20,7 +20,7 @@ enum Currency {
 
 enum Country {
   US
-  CA
+  TO
 }
 
 model User {

@@ -41,6 +41,20 @@ export function StocksTable({
     }
   };
 
+  const handlePercentChange = (symbol: string, value: string) => {
+    const newPercent = Math.floor(parseFloat(value));
+    if (!isNaN(newPercent) && newPercent >= 0 && newPercent <= 100) {
+      const currentTotal = stocks.reduce(
+        (sum, s) => sum + (s.symbol === symbol ? 0 : s.percent),
+        0
+      );
+
+      if (currentTotal + newPercent <= 100) {
+        onUpdatePercent(symbol, newPercent);
+      }
+    }
+  };
+
   return (
     <div className="rounded-lg border">
       <div className="overflow-x-auto">
@@ -85,21 +99,25 @@ export function StocksTable({
                 </td>
                 <td className="p-3 flex items-center justify-end gap-2">
                   {readOnly ? (
-                    <span>{stock.percent.toFixed(2)}%</span>
+                    <span>{stock.percent}%</span>
                   ) : (
                     <Input
                       type="number"
                       value={stock.percent}
                       onChange={(e) =>
-                        onUpdatePercent(
-                          stock.symbol,
-                          parseFloat(e.target.value)
-                        )
+                        handlePercentChange(stock.symbol, e.target.value)
                       }
                       className="w-20 text-right"
                       min="0"
-                      max="100"
-                      step="0.1"
+                      max={
+                        100 -
+                        stocks.reduce(
+                          (sum, s) =>
+                            sum + (s.symbol === stock.symbol ? 0 : s.percent),
+                          0
+                        )
+                      }
+                      step="1"
                     />
                   )}
                 </td>

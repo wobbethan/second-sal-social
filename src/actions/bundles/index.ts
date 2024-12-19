@@ -83,7 +83,16 @@ export async function getUserBundles() {
     const user = await prisma.user.findUnique({
       where: { clerkId: clerk.id },
       include: {
-        bundles: true,
+        bundles: {
+          include: {
+            creator: {
+              select: {
+                username: true,
+                image: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -119,7 +128,7 @@ export async function getBundle(bundleId: string) {
         creator: {
           select: {
             username: true,
-          image: true,
+            image: true,
           },
         },
       },
@@ -133,5 +142,46 @@ export async function getBundle(bundleId: string) {
   } catch (error) {
     console.error("Error fetching bundle:", error);
     return { success: false, error: "Failed to fetch bundle" };
+  }
+}
+
+export async function getCommunityBundles() {
+  try {
+    const clerk = await currentUser();
+    if (!clerk) {
+      return { success: false, error: "Not authenticated" };
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { clerkId: clerk.id },
+    });
+
+    if (!user) {
+      return { success: false, error: "User not found" };
+    }
+
+    const bundles = await prisma.bundle.findMany({
+      where: {
+        NOT: {
+          creatorId: user.id,
+        },
+      },
+      include: {
+        creator: {
+          select: {
+            username: true,
+            image: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return { success: true, bundles };
+  } catch (error) {
+    console.error("Error fetching community bundles:", error);
+    return { success: false, error: "Failed to fetch community bundles" };
   }
 }

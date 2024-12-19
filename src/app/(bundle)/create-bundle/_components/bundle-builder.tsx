@@ -35,6 +35,8 @@ import { z } from "zod";
 import { CountrySelector } from "./country-selector";
 import PayoutCalendar from "./payout-calendar";
 import { StocksTable } from "./stocks-table";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
 interface Stock {
   symbol: string;
@@ -51,7 +53,7 @@ interface Stock {
 // Add form schema
 const bundleSchema = z.object({
   name: z.string().min(1, "Bundle name is required"),
-  country: z.enum(["US", "CA"]),
+  country: z.enum(["US", "TO"]),
   securities: z
     .array(
       z.object({
@@ -73,6 +75,7 @@ export const getBundlePriceForDesiredIncome = (
   if (averageDividendYield === 0 || !annualIncome) {
     return 0;
   }
+  // Matches exactly with the original formula
   return round(div(annualIncome, div(averageDividendYield, 100)), -2);
 };
 
@@ -190,6 +193,7 @@ export const getSecuritySharesForBundle = ({
   securityPercentage: number;
   securityPrice: number;
 }) => {
+  // Matches exactly with the original formula
   const price = mul(div(bundlePrice, totalPercent), securityPercentage);
   return round(div(price, securityPrice), -2);
 };
@@ -246,8 +250,21 @@ const calculateBundleScore = (stocks: Stock[]): number => {
   return Math.round(Math.min(Math.max(score / 10, 0), 10) * 100) / 100;
 };
 
+const calculateDividendYield = (
+  annualDividend: number | null | undefined,
+  price: number | null | undefined
+): number => {
+  if (!annualDividend || !price || price === 0) {
+    return 0;
+  }
+
+  // Matches exactly with getDividendYield formula
+  const result = round(mul(div(annualDividend, price), 100), -2);
+  return Number.isNaN(result) || result < 0 ? 0 : result;
+};
+
 export default function BundleBuilder() {
-  const [selectedCountry, setSelectedCountry] = useState<"US" | "CA">("US");
+  const [selectedCountry, setSelectedCountry] = useState<"US" | "TO">("US");
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [bundleName, setBundleName] = useState("");
   const [targetDaily, setTargetDaily] = useState(2.47);
@@ -321,8 +338,8 @@ export default function BundleBuilder() {
 
   const handleCountryChange = useCallback(
     async (country: string, updatePreference: boolean) => {
-      setSelectedCountry(country as "US" | "CA");
-      setValue("country", country as "US" | "CA");
+      setSelectedCountry(country as "US" | "TO");
+      setValue("country", country as "US" | "TO");
       setStocks([]);
       setSearchQuery("");
       setFilteredResults([]);
@@ -330,7 +347,7 @@ export default function BundleBuilder() {
 
       if (updatePreference) {
         try {
-          await updateUserPreferences({ country: country as "US" | "CA" });
+          await updateUserPreferences({ country: country as "US" | "TO" });
           setIsPreferenceBased(true);
         } catch (error) {
           console.error("Failed to update preferences:", error);
@@ -362,7 +379,7 @@ export default function BundleBuilder() {
   // Fetch all stocks on component mount
   useEffect(() => {
     const fetchStocks = async () => {
-      const stocks = await getAllStocks(selectedCountry === "US" ? "US" : "CA");
+      const stocks = await getAllStocks(selectedCountry === "US" ? "US" : "TO");
       setAllStocks(stocks);
     };
     fetchStocks();
@@ -414,48 +431,47 @@ export default function BundleBuilder() {
   };
 
   const handleUpdatePercent = (symbol: string, percent: number) => {
-    setStocks((currentStocks) => {
-      const updatedStocks = currentStocks.map((stock) => {
+    setStocks((currentStocks) =>
+      currentStocks.map((stock) => {
         if (stock.symbol === symbol) {
-          // Update percentage
-          const updatedStock = { ...stock, percent };
-          // Recalculate shares
-          updatedStock.shares = getSecuritySharesForBundle({
+          const shares = getSecuritySharesForBundle({
             bundlePrice: totalCost,
             totalPercent: 100,
             securityPercentage: percent,
             securityPrice: stock.price,
           });
-          return updatedStock;
+          return { ...stock, percent, shares };
         }
         return stock;
-      });
-
-      return updatedStocks;
-    });
+      })
+    );
   };
 
   const hasZeroPercentStocks = stocks.some((stock) => stock.percent === 0);
 
   const handleTargetChange = (
-    value: number,
+    value: string,
     type: "daily" | "monthly" | "yearly"
   ) => {
+    // Parse value and ensure 2 decimal places
+    const numValue = parseFloat(value) || 0;
+    const roundedValue = Math.round(numValue * 100) / 100;
+
     switch (type) {
       case "daily":
-        setTargetDaily(value);
-        setTargetMonthly(value * 30.44); // Average days in a month
-        setTargetYearly(value * 365.25); // Average days in a year
+        setTargetDaily(roundedValue);
+        setTargetMonthly(Math.round(roundedValue * 30.44 * 100) / 100);
+        setTargetYearly(Math.round(roundedValue * 365.25 * 100) / 100);
         break;
       case "monthly":
-        setTargetMonthly(value);
-        setTargetDaily(value / 30.44);
-        setTargetYearly(value * 12);
+        setTargetMonthly(roundedValue);
+        setTargetDaily(Math.round((roundedValue / 30.44) * 100) / 100);
+        setTargetYearly(Math.round(roundedValue * 12 * 100) / 100);
         break;
       case "yearly":
-        setTargetYearly(value);
-        setTargetDaily(value / 365.25);
-        setTargetMonthly(value / 12);
+        setTargetYearly(roundedValue);
+        setTargetDaily(Math.round((roundedValue / 365.25) * 100) / 100);
+        setTargetMonthly(Math.round((roundedValue / 12) * 100) / 100);
         break;
     }
   };
@@ -466,14 +482,20 @@ export default function BundleBuilder() {
     }
 
     try {
-      // Fetch stock data
       const stockData = await getBundleStockData(stock.symbol);
-
       if (!stockData) {
         throw new Error("Failed to fetch stock data");
       }
 
-      const dividendGrowth = calculateDividendGrowth(stockData.dividendHistory);
+      const stockInfo = {
+        symbol: stock.symbol,
+        logo: stockData.logo,
+        price: stockData.price,
+        yield: stockData.dividendYield,
+        dividendHistory: stockData.dividendHistory,
+        industry: stockData.industry,
+        dividendGrowth: calculateDividendGrowth(stockData.dividendHistory),
+      };
 
       setStocks((currentStocks) => {
         const totalPercent = currentStocks.reduce(
@@ -489,77 +511,44 @@ export default function BundleBuilder() {
             securityPercentage: 100,
             securityPrice: stockData.price,
           });
+          return [{ ...stockInfo, percent: 100, shares }];
+        }
 
-          return [
-            {
-              symbol: stockData.symbol,
-              logo: stockData.logo,
-              percent: 100,
-              yield: stockData.dividendYield,
-              shares,
-              price: stockData.price,
-              dividendGrowth: dividendGrowth,
-              dividendHistory: stockData.dividendHistory,
-              industry: stockData.industry,
-            },
-          ];
-        } else if (remainingPercent > 0) {
+        if (remainingPercent > 0) {
           const shares = getSecuritySharesForBundle({
             bundlePrice: totalCost,
             totalPercent: 100,
             securityPercentage: remainingPercent,
             securityPrice: stockData.price,
           });
-
           return [
             ...currentStocks,
-            {
-              symbol: stockData.symbol,
-              logo: stockData.logo,
-              percent: remainingPercent,
-              yield: stockData.dividendYield,
-              shares,
-              price: stockData.price,
-              dividendGrowth: dividendGrowth,
-              dividendHistory: stockData.dividendHistory,
-              industry: stockData.industry,
-            },
-          ];
-        } else {
-          const lastStock = currentStocks[currentStocks.length - 1];
-          const splitPercent = lastStock.percent / 2;
-
-          // Calculate shares for both split stocks
-          const shares = getSecuritySharesForBundle({
-            bundlePrice: totalCost,
-            totalPercent: 100,
-            securityPercentage: splitPercent,
-            securityPrice: stockData.price,
-          });
-
-          const lastStockShares = getSecuritySharesForBundle({
-            bundlePrice: totalCost,
-            totalPercent: 100,
-            securityPercentage: splitPercent,
-            securityPrice: lastStock.price,
-          });
-
-          return [
-            ...currentStocks.slice(0, -1),
-            { ...lastStock, percent: splitPercent, shares: lastStockShares },
-            {
-              symbol: stockData.symbol,
-              logo: stockData.logo,
-              percent: splitPercent,
-              yield: stockData.dividendYield,
-              shares,
-              price: stockData.price,
-              dividendGrowth: dividendGrowth,
-              dividendHistory: stockData.dividendHistory,
-              industry: stockData.industry,
-            },
+            { ...stockInfo, percent: remainingPercent, shares },
           ];
         }
+
+        const lastStock = currentStocks[currentStocks.length - 1];
+        const splitPercent = Math.floor(lastStock.percent / 2);
+
+        const newShares = getSecuritySharesForBundle({
+          bundlePrice: totalCost,
+          totalPercent: 100,
+          securityPercentage: splitPercent,
+          securityPrice: stockData.price,
+        });
+
+        const lastStockShares = getSecuritySharesForBundle({
+          bundlePrice: totalCost,
+          totalPercent: 100,
+          securityPercentage: splitPercent,
+          securityPrice: lastStock.price,
+        });
+
+        return [
+          ...currentStocks.slice(0, -1),
+          { ...lastStock, percent: splitPercent, shares: lastStockShares },
+          { ...stockInfo, percent: splitPercent, shares: newShares },
+        ];
       });
 
       setSearchQuery("");
@@ -571,17 +560,19 @@ export default function BundleBuilder() {
   };
 
   useEffect(() => {
-    setStocks((currentStocks) =>
-      currentStocks.map((stock) => ({
-        ...stock,
-        shares: getSecuritySharesForBundle({
-          bundlePrice: totalCost,
-          totalPercent: 100,
-          securityPercentage: stock.percent,
-          securityPrice: stock.price,
-        }),
-      }))
-    );
+    if (totalCost > 0) {
+      setStocks((currentStocks) =>
+        currentStocks.map((stock) => ({
+          ...stock,
+          shares: getSecuritySharesForBundle({
+            bundlePrice: totalCost,
+            totalPercent: 100,
+            securityPercentage: stock.percent,
+            securityPrice: stock.price,
+          }),
+        }))
+      );
+    }
   }, [totalCost]);
 
   const bundleScore = stocks.length > 0 ? calculateBundleScore(stocks) : 0;
@@ -606,7 +597,13 @@ export default function BundleBuilder() {
       }}
       className="max-w-6xl mx-auto p-4 space-y-8 justify-center"
     >
-      {/* Header */}
+      <Link
+        href="/bundles"
+        className="inline-flex items-center text-sm text-muted-foreground hover:text-primary transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Back to overview
+      </Link>
 
       <h1 className="text-2xl font-bold">Build a bundle</h1>
 
@@ -616,39 +613,54 @@ export default function BundleBuilder() {
         <div className="grid grid-cols-3 gap-4">
           <div>
             <div className="text-sm text-muted-foreground mb-2">Daily</div>
-            <Input
-              type="number"
-              value={targetDaily.toFixed(2)}
-              onChange={(e) =>
-                handleTargetChange(parseFloat(e.target.value), "daily")
-              }
-              step="0.01"
-              min="0"
-            />
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2">
+                $
+              </span>
+              <Input
+                type="number"
+                value={targetDaily}
+                onChange={(e) => handleTargetChange(e.target.value, "daily")}
+                className="pl-6"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+              />
+            </div>
           </div>
           <div>
             <div className="text-sm text-muted-foreground mb-2">Monthly</div>
-            <Input
-              type="number"
-              value={targetMonthly.toFixed(2)}
-              onChange={(e) =>
-                handleTargetChange(parseFloat(e.target.value), "monthly")
-              }
-              step="0.01"
-              min="0"
-            />
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2">
+                $
+              </span>
+              <Input
+                type="number"
+                value={targetMonthly}
+                onChange={(e) => handleTargetChange(e.target.value, "monthly")}
+                className="pl-6"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+              />
+            </div>
           </div>
           <div>
             <div className="text-sm text-muted-foreground mb-2">Yearly</div>
-            <Input
-              type="number"
-              value={targetYearly.toFixed(2)}
-              onChange={(e) =>
-                handleTargetChange(parseFloat(e.target.value), "yearly")
-              }
-              step="0.01"
-              min="0"
-            />
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2">
+                $
+              </span>
+              <Input
+                type="number"
+                value={targetYearly}
+                onChange={(e) => handleTargetChange(e.target.value, "yearly")}
+                className="pl-6"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+              />
+            </div>
           </div>
         </div>
       </Card>
