@@ -5,13 +5,16 @@ import { BundleView } from "./_components/bundle-view";
 import { calculateDividendGrowth } from "@/lib/dividend-utils";
 
 interface PageProps {
-  params: Promise<{ bundle_id: string }>;
-  searchParams: { [key: string]: string | string[] | undefined };
+  params: { bundle_id: string };
+  searchParams?: { [key: string]: string | string[] | undefined };
 }
 
-export default async function BundlePage({ params }: PageProps) {
-  const { bundle_id } = await params;
-  const result = await getBundle(bundle_id);
+export default async function BundlePage({
+  params,
+}: {
+  params: { bundle_id: string };
+}) {
+  const result = await getBundle(params.bundle_id);
 
   if (!result.success || !result.bundle) {
     notFound();
