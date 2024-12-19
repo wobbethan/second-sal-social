@@ -7,6 +7,10 @@ import { useState, useEffect } from "react";
 import { StocksTable } from "../../../create-bundle/_components/stocks-table";
 import PayoutCalendar from "../../../create-bundle/_components/payout-calendar";
 import { div, round } from "exact-math";
+import { getBundleStockData } from "@/actions/tickers";
+import { calculateDividendGrowth } from "@/lib/dividend-utils";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
 interface Stock {
   symbol: string;
@@ -20,7 +24,12 @@ interface Stock {
   industry: string;
 }
 
-export function BundleView({ initialStocks }: { initialStocks: Stock[] }) {
+interface BundleViewProps {
+  initialStocks: Stock[];
+  bundle: any; // Type this properly based on your bundle structure
+}
+
+export function BundleView({ initialStocks, bundle }: BundleViewProps) {
   const [targetDaily, setTargetDaily] = useState(2.47);
   const [targetMonthly, setTargetMonthly] = useState(75);
   const [targetYearly, setTargetYearly] = useState(900);
@@ -81,7 +90,17 @@ export function BundleView({ initialStocks }: { initialStocks: Stock[] }) {
   }, [totalCost]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-6xl w-full">
+      <div className="flex items-center gap-4">
+        <Link
+          href="/bundles"
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back to bundles</span>
+        </Link>
+      </div>
+
       <Card className="p-6">
         <h2 className="text-lg mb-4">I want to make...</h2>
         <div className="grid grid-cols-3 gap-4">

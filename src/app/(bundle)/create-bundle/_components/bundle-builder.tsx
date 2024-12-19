@@ -35,6 +35,8 @@ import { z } from "zod";
 import { CountrySelector } from "./country-selector";
 import PayoutCalendar from "./payout-calendar";
 import { StocksTable } from "./stocks-table";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
 interface Stock {
   symbol: string;
@@ -595,7 +597,13 @@ export default function BundleBuilder() {
       }}
       className="max-w-6xl mx-auto p-4 space-y-8 justify-center"
     >
-      {/* Header */}
+      <Link
+        href="/bundles"
+        className="inline-flex items-center text-sm text-muted-foreground hover:text-primary transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Back to overview
+      </Link>
 
       <h1 className="text-2xl font-bold">Build a bundle</h1>
 
