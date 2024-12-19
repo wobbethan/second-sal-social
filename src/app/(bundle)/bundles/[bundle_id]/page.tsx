@@ -4,13 +4,14 @@ import { notFound } from "next/navigation";
 import { BundleView } from "./_components/bundle-view";
 import { calculateDividendGrowth } from "@/lib/dividend-utils";
 
-export default async function BundlePage({
-  params,
-}: {
-  params: Promise<{ bundle_id: string }> | { bundle_id: string };
-}) {
-  const resolvedParams = "then" in params ? await params : params;
-  const result = await getBundle(resolvedParams.bundle_id);
+interface PageProps {
+  params: Promise<{ bundle_id: string }>;
+  searchParams: { [key: string]: string | string[] | undefined };
+}
+
+export default async function BundlePage({ params }: PageProps) {
+  const { bundle_id } = await params;
+  const result = await getBundle(bundle_id);
 
   if (!result.success || !result.bundle) {
     notFound();
@@ -19,7 +20,6 @@ export default async function BundlePage({
   const bundle = result.bundle;
   const securities = bundle.securities as any[];
 
-  // Fetch current stock data for each security
   const stocksPromises = securities.map(async (security) => {
     const stockData = await getBundleStockData(security.symbol);
     if (!stockData)
@@ -37,5 +37,9 @@ export default async function BundlePage({
 
   const stocks = await Promise.all(stocksPromises);
 
-  return <div className="w-full flex items-center justify-center"><BundleView initialStocks={stocks} bundle={bundle} /></div>;
+  return (
+    <div className="w-full flex items-center justify-center">
+      <BundleView initialStocks={stocks} bundle={bundle} />
+    </div>
+  );
 }
