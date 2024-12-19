@@ -1,0 +1,120 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Currency {
+  USD
+  CAD
+}
+
+enum Country {
+  US
+  CA
+}
+
+model User {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkId   String  @unique
+  firstName String
+  lastName  String
+  username  String
+  image     String?
+
+  stripeId String?
+
+  bundles      Bundle[] // Created bundles
+  savedBundles Bundle[]     @relation("SavedBundles")
+  posts        Post[] // Changed from Post to posts
+  likes        Like[] // Changed from Like to likes
+  comments     Comment[] // Changed from Comment to comments
+  preferences  Preferences?
+  settings     Settings?
+
+  onboarded Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Add this to ensure preferences and settings are created with user
+}
+
+model Preferences {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bio         String?
+  phone       String?
+  country     Country
+  dateOfBirth DateTime?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String    @unique @db.Uuid
+}
+
+model Settings {
+  id                   String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  theme                String  @default("light")
+  language             String  @default("en")
+  notificationsEnabled Boolean @default(true)
+  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId               String  @unique @db.Uuid
+}
+
+model Bundle {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  creator    User     @relation(fields: [creatorId], references: [id])
+  creatorId  String   @db.Uuid
+  savedBy    User[]   @relation("SavedBundles")
+  name       String   @unique
+  securities Json
+  currency   Currency
+  country    Country  @default(US)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Post {
+  id          String    @id @db.Uuid
+  createdAt   DateTime  @default(now())
+  title       String?
+  htmlContent String?
+  jsonContent String?
+  content     String
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId    String    @db.Uuid
+  likes       Like[]
+  comments    Comment[]
+  channelId   String    @db.Uuid
+}
+
+model Like {
+  id        String   @id @db.Uuid
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @db.Uuid
+}
+
+model Comment {
+  id        String    @id @db.Uuid
+  createdAt DateTime  @default(now())
+  content   String
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String    @db.Uuid
+  replied   Boolean?  @default(false)
+  //self relation 1 to many for comments
+  reply     Comment[] @relation(name: "CommentToComment")
+  Comment   Comment?  @relation(name: "CommentToComment", fields: [commentId], references: [id])
+  commentId String?   @db.Uuid
+}

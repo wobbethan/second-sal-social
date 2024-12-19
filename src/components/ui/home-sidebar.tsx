@@ -1,4 +1,5 @@
 "use client";
+import { User } from "@/types/auth";
 import {
   Sidebar,
   SidebarContent,
@@ -32,6 +33,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "./button";
 import { Card } from "./card";
+import { useClerk, UserButton } from "@clerk/nextjs";
+import { useUserContext } from "@/context/UserContext";
+import { useRouter } from "next/navigation";
 
 const followedAccounts = [
   { name: "Sarah Johnson", avatar: "/avatar-1.jpg", status: "Online" },
@@ -68,7 +72,11 @@ const initialNotifications = [
   },
 ];
 
-export default function SidebarComponent() {
+export default function HomeSidebarComponent() {
+  const user = useUserContext();
+  const router = useRouter();
+
+  const { signOut } = useClerk();
   const [activeTab, setActiveTab] = useState("home");
   const [isNotificationSheetOpen, setIsNotificationSheetOpen] = useState(false);
   const [notifications, setNotifications] = useState(initialNotifications);
@@ -235,7 +243,10 @@ export default function SidebarComponent() {
       </SidebarContent>
       <SidebarFooter className="p-4 space-y-4">
         <div className="px-4 py-2">
-          <Button className="w-full bg-green-600 text-white hover:bg-green-700">
+          <Button
+            className="w-full bg-green-600 text-white hover:bg-green-700"
+            onClick={() => router.push("/create-bundle")}
+          >
             <Plus className="mr-2 h-4 w-4" /> Create Bundle
           </Button>
         </div>
@@ -243,28 +254,52 @@ export default function SidebarComponent() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="w-full justify-start">
               <Avatar className="h-8 w-8 mr-2">
-                <AvatarImage src="/placeholder-avatar.jpg" alt="@johndoe" />
-                <AvatarFallback>JD</AvatarFallback>
+                <AvatarImage
+                  src={user?.image || ""}
+                  alt={user?.firstName || ""}
+                />
+                <AvatarFallback>
+                  {user?.firstName?.[0]}
+                  {user?.lastName?.[0]}
+                </AvatarFallback>
               </Avatar>
-              John Doe
+              {user?.firstName} {user?.lastName}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">John Doe</p>
-                <p className="text-xs leading-none text-muted-foreground">
-                  j.doe@example.com
-                </p>
+              <div className="flex flex-row">
+                <Avatar className="h-8 w-8 mr-2">
+                  <AvatarImage
+                    src={user?.image || ""}
+                    alt={user?.firstName || ""}
+                  />
+                  <AvatarFallback>
+                    {user?.firstName?.[0]}
+                    {user?.lastName?.[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">
+                    {user?.firstName} {user?.lastName}
+                  </p>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {user?.email}
+                  </p>
+                </div>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem>Upgrade to Pro</DropdownMenuItem>
-            <DropdownMenuItem>Account</DropdownMenuItem>
+            <DropdownMenuItem>Profile</DropdownMenuItem>
             <DropdownMenuItem>Billing</DropdownMenuItem>
             <DropdownMenuItem>Notifications</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Log out</DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => signOut({ redirectUrl: "/sign-in" })}
+            >
+              Log out
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarFooter>

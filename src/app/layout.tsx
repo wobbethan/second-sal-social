@@ -3,7 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { SidebarProvider, Sidebar } from "@/components/ui/sidebar";
 import SidebarComponent from "@/components/ui/home-sidebar";
-
+import { ClerkProvider } from "@clerk/nextjs";
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
   variable: "--font-geist-sans",
@@ -26,19 +26,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <SidebarProvider>
-          <div className="flex h-screen overflow-hidden bg-gray-100">
-            <div className="lg:block hidden">
-              <SidebarComponent />
-            </div>
-            <main className="flex-1 w-full">{children}</main>
+    <ClerkProvider>
+      <html lang="en">
+        <body
+          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        >
+          <div className="flex h-screen overflow-hidden bg-gray-100 w-full">
+            {children}
           </div>
-        </SidebarProvider>
-      </body>
-    </html>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

@@ -19,7 +19,7 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { redirect, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, useRef } from "react";
 
 const stockData = [
@@ -79,18 +79,70 @@ interface SearchResult {
   matchScore: string;
 }
 
-export function SearchBar() {
+interface SearchBarProps {
+  className?: string;
+}
+
+export function SearchBar({ className }: SearchBarProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  const router = useRouter();
-  const typingTimeoutRef = useRef<NodeJS.Timeout>();
   const searchBarRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const abortControllerRef = useRef<AbortController>();
+
+  const handleSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setQuery(value);
+
+    // Clear previous timeout and abort controller
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    if (value.length === 0) {
+      setResults([]);
+      setIsLoading(false);
+      return;
+    }
+
+    // Only search if query is at least 2 characters
+    if (value.length < 2) return;
+
+    setIsLoading(true);
+
+    // Debounce the search with a timeout
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const searchResults = await searchTicker(value);
+        // setResults(searchResults);
+      } catch (error) {
+        console.error("Search failed:", error);
+        setResults([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 300);
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   useEffect(() => {
-    // Handle clicks outside of the search bar
     function handleClickOutside(event: MouseEvent) {
       if (
         searchBarRef.current &&
@@ -103,55 +155,6 @@ export function SearchBar() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  const debouncedSearch = useDebounce(async (searchQuery: string) => {
-    if (searchQuery.length < 1) {
-      setResults([]);
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const searchResults = await searchTicker(searchQuery);
-      setResults(searchResults);
-    } catch (error) {
-      console.error("Search failed:", error);
-      setResults([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, 50);
-
-  const handleSearch = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value;
-      setQuery(value);
-      setIsTyping(true);
-
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-
-      typingTimeoutRef.current = setTimeout(() => {
-        setIsTyping(false);
-      }, 300);
-
-      if (value.length === 0) {
-        setResults([]);
-      } else {
-        debouncedSearch(value);
-      }
-    },
-    [debouncedSearch]
-  );
-
-  useEffect(() => {
-    return () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
     };
   }, []);
 
@@ -174,7 +177,7 @@ export function SearchBar() {
           onFocus={() => setIsFocused(true)}
         />
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          {(isLoading || isTyping) && query.length > 0 ? (
+          {(isLoading || isFocused) && query.length > 0 ? (
             <div className="animate-spin h-5 w-5">
               <svg className="h-5 w-5 text-gray-400" viewBox="0 0 24 24">
                 <circle
@@ -211,9 +214,9 @@ export function SearchBar() {
       </div>
 
       {/* Search Results Dropdown with Loading State */}
-      {isFocused && query.length > 0 && (results.length > 0 || isTyping) && (
+      {isFocused && query.length > 0 && (results.length > 0 || isLoading) && (
         <div className="absolute mt-1 w-full bg-white rounded-md shadow-lg z-50 max-h-96 overflow-y-auto">
-          {isTyping && results.length === 0 ? (
+          {isLoading && results.length === 0 ? (
             <div className="px-4 py-2 text-sm text-gray-500">Searching...</div>
           ) : (
             results.map((result) => (
@@ -224,10 +227,11 @@ export function SearchBar() {
               >
                 <div className="flex justify-between items-center">
                   <div>
-                    <div className="font-medium">{result.symbol}</div>
-                    <div className="text-sm text-gray-600">{result.name}</div>
+                    <div className="font-medium">({result.symbol})</div>
                   </div>
-                  <div className="text-xs text-gray-400">{result.region}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {result.type}
+                  </div>
                 </div>
               </button>
             ))
