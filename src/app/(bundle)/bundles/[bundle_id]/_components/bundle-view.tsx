@@ -12,6 +12,7 @@ import { calculateDividendGrowth } from "@/lib/dividend-utils";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { TargetIncomeInputs } from "../../../_components/target-income-inputs";
 
 interface Stock {
   symbol: string;
@@ -43,27 +44,14 @@ export function BundleView({ initialStocks, bundle }: BundleViewProps) {
   const [targetYearly, setTargetYearly] = useState(900);
   const [stocks, setStocks] = useState(initialStocks);
 
-  const handleTargetChange = (
-    value: number,
-    type: "daily" | "monthly" | "yearly"
-  ) => {
-    switch (type) {
-      case "daily":
-        setTargetDaily(value);
-        setTargetMonthly(value * 30.44);
-        setTargetYearly(value * 365.25);
-        break;
-      case "monthly":
-        setTargetMonthly(value);
-        setTargetDaily(value / 30.44);
-        setTargetYearly(value * 12);
-        break;
-      case "yearly":
-        setTargetYearly(value);
-        setTargetDaily(value / 365.25);
-        setTargetMonthly(value / 12);
-        break;
-    }
+  const handleTargetChange = (values: {
+    daily: number;
+    monthly: number;
+    yearly: number;
+  }) => {
+    setTargetDaily(values.daily);
+    setTargetMonthly(values.monthly);
+    setTargetYearly(values.yearly);
   };
 
   const totalPercent = stocks.reduce((sum, stock) => sum + stock.percent, 0);
@@ -125,92 +113,12 @@ export function BundleView({ initialStocks, bundle }: BundleViewProps) {
         <h1 className="text-3xl font-bold tracking-tight">{bundle.name}</h1>
       </div>
 
-      <Card className="p-6">
-        <h2 className="text-lg font-medium mb-4">I want to make...</h2>
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <div className="text-sm text-muted-foreground mb-2">Daily</div>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                $
-              </span>
-              <Input
-                type="number"
-                value={targetDaily.toFixed(2)}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value);
-                  if (!isNaN(value)) {
-                    handleTargetChange(value, "daily");
-                  }
-                }}
-                className="pl-7"
-                step="0.01"
-                min="0"
-                onBlur={(e) => {
-                  const value = parseFloat(e.target.value);
-                  if (!isNaN(value)) {
-                    e.target.value = value.toFixed(2);
-                  }
-                }}
-              />
-            </div>
-          </div>
-          <div>
-            <div className="text-sm text-muted-foreground mb-2">Monthly</div>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                $
-              </span>
-              <Input
-                type="number"
-                value={targetMonthly.toFixed(2)}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value);
-                  if (!isNaN(value)) {
-                    handleTargetChange(value, "monthly");
-                  }
-                }}
-                className="pl-7"
-                step="0.01"
-                min="0"
-                onBlur={(e) => {
-                  const value = parseFloat(e.target.value);
-                  if (!isNaN(value)) {
-                    e.target.value = value.toFixed(2);
-                  }
-                }}
-              />
-            </div>
-          </div>
-          <div>
-            <div className="text-sm text-muted-foreground mb-2">Yearly</div>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                $
-              </span>
-              <Input
-                type="number"
-                value={targetYearly.toFixed(2)}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value);
-                  if (!isNaN(value)) {
-                    handleTargetChange(value, "yearly");
-                  }
-                }}
-                className="pl-7"
-                step="0.01"
-                min="0"
-                onBlur={(e) => {
-                  const value = parseFloat(e.target.value);
-                  if (!isNaN(value)) {
-                    e.target.value = value.toFixed(2);
-                  }
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      </Card>
+      <TargetIncomeInputs
+        initialDaily={targetDaily}
+        initialMonthly={targetMonthly}
+        initialYearly={targetYearly}
+        onChange={handleTargetChange}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-8">
         <div className="space-y-6">
