@@ -9,11 +9,8 @@ interface PageProps {
   searchParams?: { [key: string]: string | string[] | undefined };
 }
 
-export default async function BundlePage({
-  params,
-}: {
-  params: { bundle_id: string };
-}) {
+export default async function BundlePage(props: PageProps) {
+  const params = await Promise.resolve(props.params);
   const result = await getBundle(params.bundle_id);
 
   if (!result.success || !result.bundle) {
@@ -41,8 +38,10 @@ export default async function BundlePage({
   const stocks = await Promise.all(stocksPromises);
 
   return (
-    <div className="w-full flex items-center justify-center">
-      <BundleView initialStocks={stocks} bundle={bundle} />
+    <div className="min-h-screen w-full p-6 overflow-y-auto">
+      <div className="max-w-7xl mx-auto">
+        <BundleView initialStocks={stocks} bundle={bundle} />
+      </div>
     </div>
   );
 }

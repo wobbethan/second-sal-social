@@ -11,6 +11,7 @@ import { getBundleStockData } from "@/actions/tickers";
 import { calculateDividendGrowth } from "@/lib/dividend-utils";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface Stock {
   symbol: string;
@@ -26,7 +27,14 @@ interface Stock {
 
 interface BundleViewProps {
   initialStocks: Stock[];
-  bundle: any; // Type this properly based on your bundle structure
+  bundle: {
+    name: string;
+    creator: {
+      username: string;
+      image: string | null;
+    };
+    // ... other bundle properties
+  };
 }
 
 export function BundleView({ initialStocks, bundle }: BundleViewProps) {
@@ -91,7 +99,7 @@ export function BundleView({ initialStocks, bundle }: BundleViewProps) {
 
   return (
     <div className="space-y-8 max-w-6xl w-full">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between">
         <Link
           href="/bundles"
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -99,6 +107,22 @@ export function BundleView({ initialStocks, bundle }: BundleViewProps) {
           <ArrowLeft className="h-4 w-4" />
           <span>Back to bundles</span>
         </Link>
+
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">
+            Created by {bundle.creator.username}
+          </span>
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={bundle.creator.image || ""} />
+            <AvatarFallback>
+              {bundle.creator.username?.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        </div>
+      </div>
+
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">{bundle.name}</h1>
       </div>
 
       <Card className="p-6">
@@ -205,7 +229,7 @@ export function BundleView({ initialStocks, bundle }: BundleViewProps) {
           <Card className="p-6">
             <h2 className="text-lg font-medium mb-4">Statistics</h2>
             <div className="space-y-4">
-              <div className="p-4 bg-muted/50 rounded-lg">
+              <div className="p-4 bg-[#F1F5F9] rounded-lg">
                 <div className="text-sm text-muted-foreground">
                   Cost to get ${targetMonthly.toFixed(2)} monthly
                 </div>
@@ -218,7 +242,7 @@ export function BundleView({ initialStocks, bundle }: BundleViewProps) {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-muted/50 rounded-lg">
+                <div className="p-4 bg-[#F1F5F9] rounded-lg">
                   <div className="text-sm text-muted-foreground">
                     Dividend yield
                   </div>
@@ -226,17 +250,17 @@ export function BundleView({ initialStocks, bundle }: BundleViewProps) {
                     {averageYield.toFixed(2)}%
                   </div>
                 </div>
-                <div className="p-4 bg-muted/50 rounded-lg">
+                <div className="p-4 bg-[#F1F5F9] rounded-lg">
                   <div className="text-sm text-muted-foreground">
                     Average growth
                   </div>
                   <div className="text-xl font-bold">{averageGrowth}%</div>
                 </div>
-                <div className="p-4 bg-muted/50 rounded-lg">
+                <div className="p-4 bg-[#F1F5F9] rounded-lg">
                   <div className="text-sm text-muted-foreground">Sectors</div>
                   <div className="text-xl font-bold">{sectors}</div>
                 </div>
-                <div className="p-4 bg-muted/50 rounded-lg">
+                <div className="p-4 bg-[#F1F5F9] rounded-lg">
                   <div className="text-sm text-muted-foreground">
                     Bundle score
                   </div>

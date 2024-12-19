@@ -4,6 +4,14 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { ConfirmDialog } from "./confirm-dialog";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -56,48 +64,58 @@ export function StocksTable({
   };
 
   return (
-    <div className="rounded-lg border">
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-muted/50">
-            <tr>
-              <th className="text-left p-3">Symbol</th>
-              <th className="text-right p-3">Percent</th>
-              <th className="text-right p-3">Yield</th>
-              <th className="text-right p-3">Shares</th>
-              <th className="text-right p-3">Price</th>
-              <th className="w-16 p-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {stocks.map((stock) => (
-              <tr key={stock.symbol} className="border-t">
-                <td className="p-3">
-                  <div className="flex items-center gap-2">
-                    <img
-                      src={stock.logo}
-                      alt={`${stock.symbol} logo`}
-                      className="w-6 h-6 rounded"
-                    />
-                    {stock.symbol}
-                    {stock.percent === 0 && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <AlertTriangle className="h-4 w-4 text-destructive" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>
-                              Stock allocation cannot be 0%. Please allocate a
-                              percentage or remove the stock.
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                  </div>
-                </td>
-                <td className="p-3 flex items-center justify-end gap-2">
+    <div className="relative w-full overflow-hidden rounded-lg border">
+      <Table className="bg-background">
+        <TableHeader>
+          <TableRow className="bg-[#F1F5F9] hover:bg-[#F1F5F9]">
+            <TableHead className="h-11 px-4 text-slate-600">Symbol</TableHead>
+            <TableHead className="h-11 px-4 text-right text-slate-600">
+              Percent
+            </TableHead>
+            <TableHead className="h-11 px-4 text-right text-slate-600">
+              Yield
+            </TableHead>
+            <TableHead className="h-11 px-4 text-right text-slate-600">
+              Shares
+            </TableHead>
+            <TableHead className="h-11 px-4 text-right text-slate-600">
+              Price
+            </TableHead>
+            {!readOnly && (
+              <TableHead className="h-11 w-16 px-4 text-slate-600" />
+            )}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {stocks.map((stock) => (
+            <TableRow key={stock.symbol}>
+              <TableCell className="px-4">
+                <div className="flex items-center gap-2">
+                  <img
+                    src={stock.logo}
+                    alt={`${stock.symbol} logo`}
+                    className="w-6 h-6 rounded"
+                  />
+                  {stock.symbol}
+                  {stock.percent === 0 && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <AlertTriangle className="h-4 w-4 text-destructive" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>
+                            Stock allocation cannot be 0%. Please allocate a
+                            percentage or remove the stock.
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell className="px-4">
+                <div className="flex items-center justify-end gap-2">
                   {readOnly ? (
                     <span>{stock.percent}%</span>
                   ) : (
@@ -120,31 +138,35 @@ export function StocksTable({
                       step="1"
                     />
                   )}
-                </td>
-                <td className="px-4 py-2 text-right">
-                  {typeof stock.yield === "number" && !isNaN(stock.yield)
-                    ? `${stock.yield.toFixed(2)}%`
-                    : "0.00%"}
-                </td>
-                <td className="text-right p-3">{stock.shares.toFixed(2)}</td>
-                <td className="text-right p-3">${stock.price.toFixed(2)}</td>
-                {!readOnly && (
-                  <td className="p-3">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onRemoveStock(stock.symbol)}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                </div>
+              </TableCell>
+              <TableCell className="text-right px-4">
+                {typeof stock.yield === "number" && !isNaN(stock.yield)
+                  ? `${stock.yield.toFixed(2)}%`
+                  : "0.00%"}
+              </TableCell>
+              <TableCell className="text-right px-4">
+                {stock.shares.toFixed(2)}
+              </TableCell>
+              <TableCell className="text-right px-4">
+                ${stock.price.toFixed(2)}
+              </TableCell>
+              {!readOnly && (
+                <TableCell className="px-4">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onRemoveStock(stock.symbol)}
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
+                </TableCell>
+              )}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
 
       <ConfirmDialog
         isOpen={!!stockToDelete}

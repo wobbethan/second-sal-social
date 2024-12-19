@@ -86,14 +86,21 @@ export default function PayoutCalendar({ stocks }: PayoutCalendarProps) {
   };
 
   return (
-    <div className="rounded-md border bg-white">
-      <Table>
+    <div className="relative w-full overflow-hidden rounded-lg border">
+      <Table className="bg-background">
         <TableHeader>
-          <TableRow>
-            <TableHead>Stock</TableHead>
-            <TableHead className="text-right">Shares</TableHead>
+          <TableRow className="bg-[#F1F5F9] hover:bg-[#F1F5F9]">
+            <TableHead className="text-center h-11 px-4 text-slate-600">
+              Stock
+            </TableHead>
+            <TableHead className="text-center h-11 px-4 text-slate-600">
+              Shares
+            </TableHead>
             {months.map((month) => (
-              <TableHead key={month} className="text-right">
+              <TableHead
+                key={month}
+                className="text-center h-11 px-4 text-slate-600"
+              >
                 {month}
               </TableHead>
             ))}
@@ -107,8 +114,8 @@ export default function PayoutCalendar({ stocks }: PayoutCalendarProps) {
             );
             return (
               <TableRow key={stock.symbol}>
-                <TableCell className="font-medium">
-                  <div className="flex items-center gap-2">
+                <TableCell className="font-medium text-center">
+                  <div className="flex items-center gap-2 justify-center">
                     <img
                       src={stock.logo}
                       alt={`${stock.symbol} logo`}
@@ -117,13 +124,15 @@ export default function PayoutCalendar({ stocks }: PayoutCalendarProps) {
                     {stock.symbol}
                   </div>
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-center">
                   {stock.shares.toFixed(2)}
                 </TableCell>
                 {payouts.map((payout, index) => (
                   <TableCell
                     key={index}
-                    className={`text-right ${payout > 0 ? "bg-green-100" : ""}`}
+                    className={`text-center ${
+                      payout > 0 ? "bg-green-100" : ""
+                    }`}
                   >
                     {payout > 0 ? `$${payout.toFixed(2)}` : "0"}
                   </TableCell>
@@ -132,8 +141,10 @@ export default function PayoutCalendar({ stocks }: PayoutCalendarProps) {
             );
           })}
           <TableRow>
-            <TableCell className="font-medium">Dividend advance</TableCell>
-            <TableCell className="text-right">
+            <TableCell className="font-medium text-center">
+              Dividend advance
+            </TableCell>
+            <TableCell className="text-center">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger className="text-sm text-muted-foreground underline cursor-help">
@@ -156,19 +167,24 @@ export default function PayoutCalendar({ stocks }: PayoutCalendarProps) {
               const monthlyAverage =
                 Math.round((totalAnnualIncome / 12) * 100) / 100;
               return (
-                <TableCell key={index} className="text-right bg-blue-50">
+                <TableCell key={index} className="text-center bg-blue-50">
                   ${monthlyAverage.toFixed(2)}
                 </TableCell>
               );
             })}
           </TableRow>
           <TableRow className="font-bold">
-            <TableCell>Income</TableCell>
-            <TableCell className="text-right"></TableCell>
+            <TableCell className="text-center">Income</TableCell>
+            <TableCell className="text-center bg-orange-100">
+              $
+              {months
+                .reduce((sum, _, i) => sum + calculateMonthlyTotal(i), 0)
+                .toFixed(2)}
+            </TableCell>
             {months.map((_, index) => {
               const total = calculateMonthlyTotal(index);
               return (
-                <TableCell key={index} className="text-right">
+                <TableCell key={index} className="text-center">
                   {total > 0 ? `$${total.toFixed(2)}` : "0"}
                 </TableCell>
               );
