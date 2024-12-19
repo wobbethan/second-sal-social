@@ -2,6 +2,7 @@ import { getBundle } from "@/actions/bundles";
 import { getBundleStockData } from "@/actions/tickers";
 import { notFound } from "next/navigation";
 import { BundleView } from "./_components/bundle-view";
+import { use } from "react";
 
 // Add this function near the top of the file, before the BundlePage component
 function calculateDividendGrowth(dividendHistory: any[]): number {
@@ -54,9 +55,10 @@ function calculateDividendGrowth(dividendHistory: any[]): number {
 export default async function BundlePage({
   params,
 }: {
-  params: { bundle_id: string };
+  params: Promise<{ bundle_id: string }> | { bundle_id: string };
 }) {
-  const result = await getBundle(params.bundle_id);
+  const resolvedParams = "then" in params ? use(params) : params;
+  const result = await getBundle(resolvedParams.bundle_id);
 
   if (!result.success) {
     notFound();

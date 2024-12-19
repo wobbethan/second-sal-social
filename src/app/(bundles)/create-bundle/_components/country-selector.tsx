@@ -5,9 +5,9 @@ import { updateUserPreferences } from "@/actions/user";
 import { useState } from "react";
 
 interface CountrySelectorProps {
-  selectedCountry: "US" | "CA";
+  selectedCountry: "US" | "TO";
   onSelectCountry: (country: string, updatePreference: boolean) => void;
-  defaultCountry?: "US" | "CA";
+  defaultCountry?: "US" | "TO";
 }
 
 export function CountrySelector({
@@ -17,7 +17,7 @@ export function CountrySelector({
 }: CountrySelectorProps) {
   const [updatePreference, setUpdatePreference] = useState(false);
 
-  const handleSelect = async (country: "US" | "CA") => {
+  const handleSelect = async (country: "US" | "TO") => {
     onSelectCountry(country, updatePreference);
   };
 
@@ -31,10 +31,10 @@ export function CountrySelector({
           United States
         </Button>
         <Button
-          variant={selectedCountry === "CA" ? "default" : "outline"}
-          onClick={() => handleSelect("CA")}
+          variant={selectedCountry === "TO" ? "default" : "outline"}
+          onClick={() => handleSelect("TO")}
         >
-          Canada
+          Toronto
         </Button>
       </div>
       <div className="flex items-center space-x-2">
